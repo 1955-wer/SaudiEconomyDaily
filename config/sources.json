@@ -1,483 +1,149 @@
+
 {
-"version": 1,
-"sources": [
-{
-"name": "وكالة الأنباء السعودية (واس)",
-"url": "https://www.spa.gov.sa/",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 5,
-"topics": ["saudi_economy", "government", "energy", "investment", "markets"]
-},
-{
-"name": "صحيفة الاقتصادية",
-"url": "https://www.aleqt.com/",
-"country": "SA",
-"type": "economic_news",
-"enabled": true,
-"priority": 5,
-"topics": ["saudi_economy", "markets", "companies", "investment", "oil"]
-},
-{
-"name": "أرقام",
-"url": "https://www.argaam.com/",
-"rss": "https://www.argaam.com/ar/rss",
-"country": "SA",
-"type": "economic_news",
-"enabled": true,
-"priority": 5,
-"topics": ["markets", "companies", "saudi_economy", "investment"]
-},
-{
-"name": "أخبار 24",
-"url": "https://akhbaar24.argaam.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "companies", "markets", "government"]
-},
-{
-"name": "مال",
-"url": "https://www.maaal.com/",
-"country": "SA",
-"type": "economic_news",
-"enabled": true,
-"priority": 5,
-"topics": ["saudi_economy", "markets", "companies", "investment"]
-},
-{
-"name": "عكاظ",
-"url": "https://www.okaz.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "الرياض",
-"url": "https://www.alriyadh.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "المدينة",
-"url": "https://www.al-madina.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "سبق",
-"url": "https://sabq.org/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "العربية",
-"url": "https://alarabiya.net/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "markets", "oil", "investment"]
-},
-{
-"name": "عرب نيوز",
-"url": "https://www.arabnews.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "investment", "business", "oil"]
-},
-{
-"name": "الشرق الأوسط",
-"url": "https://english.aawsat.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "government", "business", "investment"]
-},
-{
-"name": "رياض ديلي",
-"url": "http://alriyadhdaily.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "business"]
-},
-{
-"name": "السعودية جازيت",
-"url": "https://saudigazette.com.sa/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "business", "investment"]
-},
-{
-"name": "الاقتصادي",
-"url": "https://aliqtisadi.com/",
-"country": "SA",
-"type": "economic_news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "business", "companies", "investment"]
-},
-{
-"name": "الرياض بوست",
-"url": "https://riyadhpost.live/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "investment", "business"]
-},
-{
-"name": "المواطن",
-"url": "https://www.almowaten.net/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "تواصل",
-"url": "https://twasul.info/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "government", "business"]
-},
-{
-"name": "إيلاف",
-"url": "https://elaph.com/",
-"country": "SA",
-"type": "news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "business", "investment"]
-},
-{
-"name": "الشرق",
-"url": "https://asharq.com/",
-"country": "AE",
-"type": "regional_news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "markets", "oil", "investment"]
-},
-{
-"name": "وكالة أنباء الإمارات (وام)",
-"url": "https://wam.ae/",
-"country": "AE",
-"type": "official",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "gulf_economy", "oil", "investment"]
-},
-{
-"name": "The National",
-"url": "https://www.thenationalnews.com/",
-"country": "AE",
-"type": "regional_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "gulf_economy", "oil", "investment"]
-},
-{
-"name": "Arabian Business",
-"url": "https://www.arabianbusiness.com/",
-"country": "AE",
-"type": "business_news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "business", "investment", "real_estate"]
-},
-{
-"name": "Reuters",
-"url": "https://www.reuters.com/",
-"country": "UK",
-"type": "international_news",
-"enabled": true,
-"priority": 5,
-"topics": ["saudi_economy", "oil", "markets", "investment", "companies"]
-},
-{
-"name": "Bloomberg",
-"url": "https://www.bloomberg.com/",
-"country": "US",
-"type": "financial_news",
-"enabled": true,
-"priority": 5,
-"topics": ["saudi_economy", "markets", "oil", "investment", "companies"]
-},
-{
-"name": "CNBC",
-"url": "https://www.cnbc.com/",
-"country": "US",
-"type": "financial_news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "markets", "oil", "investment"]
-},
-{
-"name": "Financial Post",
-"url": "https://financialpost.com/",
-"country": "CA",
-"type": "financial_news",
-"enabled": false,
-"priority": 2,
-"topics": ["oil", "markets", "investment"]
-},
-{
-"name": "Wall Street Journal",
-"url": "https://www.wsj.com/",
-"country": "US",
-"type": "financial_news",
-"enabled": false,
-"priority": 3,
-"topics": ["markets", "oil", "investment"]
-},
-{
-"name": "Forbes",
-"url": "https://www.forbes.com/",
-"country": "US",
-"type": "business_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "business", "investment"]
-},
-{
-"name": "The Economist",
-"url": "https://www.economist.com/",
-"country": "UK",
-"type": "economic_analysis",
-"enabled": false,
-"priority": 2,
-"topics": ["global_economy", "oil", "markets"]
-},
-{
-"name": "McKinsey",
-"url": "https://www.mckinsey.com/",
-"country": "US",
-"type": "research",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "investment", "business", "technology"]
-},
-{
-"name": "MEED",
-"url": "https://www.meed.com/",
-"country": "UK",
-"type": "business_news",
-"enabled": true,
-"priority": 4,
-"topics": ["saudi_economy", "construction", "infrastructure", "investment"]
-},
-{
-"name": "OilPrice",
-"url": "https://oilprice.com/",
-"country": "UK",
-"type": "energy_news",
-"enabled": true,
-"priority": 4,
-"topics": ["oil", "energy", "saudi_economy"]
-},
-{
-"name": "TradeArabia",
-"url": "http://www.tradearabia.com/",
-"country": "BH",
-"type": "business_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "gulf_economy", "business", "investment"]
-},
-{
-"name": "Associated Press",
-"url": "https://apnews.com/",
-"country": "US",
-"type": "international_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "oil", "investment"]
-},
-{
-"name": "The Guardian",
-"url": "https://www.theguardian.com/",
-"country": "UK",
-"type": "international_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "oil", "global_economy"]
-},
-{
-"name": "Washington Post",
-"url": "https://www.washingtonpost.com/",
-"country": "US",
-"type": "international_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "global_economy"]
-},
-{
-"name": "New York Times",
-"url": "https://www.nytimes.com/",
-"country": "US",
-"type": "international_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "global_economy"]
-},
-{
-"name": "Al Jazeera",
-"url": "https://www.aljazeera.net/",
-"country": "QA",
-"type": "regional_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "oil", "gulf_economy", "investment"]
-},
-{
-"name": "Middle East Eye",
-"url": "https://www.middleeasteye.net/",
-"country": "UK",
-"type": "regional_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "regional_economy"]
-},
-{
-"name": "Middle East Monitor",
-"url": "https://www.middleeastmonitor.com/",
-"country": "UK",
-"type": "regional_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "regional_economy"]
-},
-{
-"name": "DW",
-"url": "https://www.dw.com/",
-"country": "DE",
-"type": "international_news",
-"enabled": false,
-"priority": 2,
-"topics": ["saudi_economy", "global_economy", "oil"]
-},
-{
-"name": "Nikkei Asia",
-"url": "https://asia.nikkei.com/",
-"country": "JP",
-"type": "business_news",
-"enabled": true,
-"priority": 3,
-"topics": ["saudi_economy", "investment", "oil", "global_economy"]
-},
-{
-"name": "وزارة المالية السعودية",
-"url": "https://www.mof.gov.sa/",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 5,
-"topics": ["budget", "government", "saudi_economy", "debt"]
-},
-{
-"name": "البنك المركزي السعودي",
-"url": "https://www.sama.gov.sa/",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 5,
-"topics": ["monetary_policy", "banks", "inflation", "saudi_economy"]
-},
-{
-"name": "المنصة الوطنية الموحدة",
-"url": "https://www.my.gov.sa/",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 4,
-"topics": ["government", "regulations", "saudi_economy"]
-},
-{
-"name": "وزارة الموارد البشرية والتنمية الاجتماعية",
-"url": "https://hrsd.gov.sa/ar/news",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 4,
-"topics": ["employment", "labor", "saudi_economy"]
-},
-{
-"name": "جامعة الملك سعود",
-"url": "https://news.ksu.edu.sa/",
-"country": "SA",
-"type": "official",
-"enabled": false,
-"priority": 2,
-"topics": ["research", "technology", "education"]
-},
-{
-"name": "جامعة الملك عبدالله للعلوم والتقنية (KAUST)",
-"url": "https://www.kaust.edu.sa/",
-"country": "SA",
-"type": "official",
-"enabled": true,
-"priority": 2,
-"topics": ["technology", "investment", "research"]
-},
-{
-"name": "جامعة الملك عبدالعزيز",
-"url": "https://www.kau.edu.sa/",
-"country": "SA",
-"type": "official",
-"enabled": false,
-"priority": 2,
-"topics": ["research", "technology", "education"]
-},
-{
-"name": "جامعة الأميرة نورة",
-"url": "https://www.pnu.edu.sa/",
-"country": "SA",
-"type": "official",
-"enabled": false,
-"priority": 2,
-"topics": ["research", "education"]
-},
-{
-"name": "مجلس التعاون الخليجي",
-"url": "https://www.gcc-sg.org/ar-sa",
-"country": "GCC",
-"type": "official",
-"enabled": true,
-"priority": 3,
-"topics": ["gulf_economy", "trade", "investment", "saudi_economy"]
-},
-{
-"name": "Business Wire",
-"url": "https://www.businesswire.com/",
-"country": "US",
-"type": "press_release",
-"enabled": true,
-"priority": 2,
-"topics": ["companies", "investment", "business"]
+  "version": 1,
+  "sources": [
+    {
+      "name": "Arab News",
+      "url": "https://www.arabnews.com/",
+      "rss": "https://www.arabnews.com/rss",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "oil",
+        "investment",
+        "business"
+      ]
+    },
+    {
+      "name": "Saudi Gazette",
+      "url": "https://saudigazette.com.sa/",
+      "rss": "https://saudigazette.com.sa/rss",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment",
+        "government"
+      ]
+    },
+    {
+      "name": "Arabian Business",
+      "url": "https://www.arabianbusiness.com/",
+      "country": "AE",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment",
+        "real_estate"
+      ]
+    },
+    {
+      "name": "Reuters",
+      "url": "https://www.reuters.com/",
+      "country": "UK",
+      "type": "international_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "oil",
+        "markets",
+        "investment",
+        "companies"
+      ]
+    },
+    {
+      "name": "Forbes",
+      "url": "https://www.forbes.com/",
+      "country": "US",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment"
+      ]
+    },
+    {
+      "name": "OilPrice",
+      "url": "https://oilprice.com/",
+      "country": "UK",
+      "type": "energy_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "oil",
+        "energy",
+        "saudi_economy"
+      ]
+    },
+    {
+      "name": "Nikkei Asia",
+      "url": "https://asia.nikkei.com/",
+      "country": "JP",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "oil",
+        "global_economy"
+      ]
+    },
+    {
+      "name": "وزارة المالية السعودية",
+      "url": "https://www.mof.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "budget",
+        "government",
+        "saudi_economy",
+        "debt"
+      ]
+    },
+    {
+      "name": "البنك المركزي السعودي",
+      "url": "https://www.sama.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "monetary_policy",
+        "banks",
+        "inflation",
+        "saudi_economy"
+      ]
+    },
+    {
+      "name": "مجلس التعاون الخليجي",
+      "url": "https://www.gcc-sg.org/ar-sa",
+      "country": "GCC",
+      "type": "official",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "gulf_economy",
+        "trade",
+        "investment",
+        "saudi_economy"
+      ]
+    }
+  ]
 }
-]
-}
+```
