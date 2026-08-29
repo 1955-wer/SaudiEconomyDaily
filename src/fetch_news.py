@@ -1,3 +1,4 @@
+
 import json
 import hashlib
 import os
@@ -47,8 +48,7 @@ def test_telegram():
 
     message = (
         "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
-        "✅ اختبار الاتصال بنجاح.\n"
-        "سيتم إرسال الأخبار هنا تلقائيًا."
+        "✅ اتصال Telegram يعمل بنجاح."
     )
 
     try:
@@ -63,13 +63,12 @@ def test_telegram():
         )
 
         print(f"Telegram HTTP status: {response.status_code}")
-        print(f"Telegram response: {response.text}")
 
         if response.ok:
             print("Telegram test succeeded")
             return True
 
-        print("Telegram test failed")
+        print(f"Telegram error: {response.text}")
         return False
 
     except Exception as e:
@@ -88,13 +87,14 @@ def fetch_rss(source):
     try:
         feed = feedparser.parse(rss_url)
 
-        if getattr(feed, "bozo", False) and not feed.entries:
-            print("RSS returned no entries")
+        print(f"RSS entries found: {len(feed.entries)}")
+
+        if not feed.entries:
             return []
 
         articles = []
 
-        for entry in feed.entries[:30]:
+        for entry in feed.entries[:20]:
             title = entry.get("title", "").strip()
             link = entry.get("link", "").strip()
 
@@ -184,9 +184,7 @@ def main():
     print("Saudi Economy Daily - News Fetcher")
     print("=" * 60)
 
-    telegram_ok = test_telegram()
-
-    if not telegram_ok:
+    if not test_telegram():
         print("Telegram test failed.")
         return
 
@@ -212,10 +210,7 @@ def main():
                 print(f"OK {name}: {len(articles)} articles")
                 all_articles.extend(articles)
             else:
-                if source.get("rss"):
-                    print(f"No articles: {name}")
-                else:
-                    print(f"No RSS configured: {name}")
+                print(f"No articles: {name}")
 
         except Exception as e:
             print(f"ERROR {name}: {e}")
@@ -236,8 +231,10 @@ def main():
         print("No news articles were found.")
         return
 
+    # للاختبار نرسل أول 5 أخبار فقط
     test_articles = articles[:5]
 
+    print()
     print(f"Sending {len(test_articles)} news articles to Telegram...")
     print()
 
