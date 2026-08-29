@@ -5,7 +5,7 @@ from pathlib import Path
 
 import feedparser
 
-BASE_DIR = Path(**file**).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 SOURCES_FILE = BASE_DIR / "config" / "sources.json"
 DATA_DIR = BASE_DIR / "data"
 NEWS_FILE = DATA_DIR / "news.json"
