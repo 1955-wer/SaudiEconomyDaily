@@ -1,8 +1,10 @@
 import json
 import hashlib
+import os
 from pathlib import Path
 
 import feedparser
+import requests
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -67,10 +69,6 @@ def fetch_rss(source):
 
 
 def fetch_source(source):
-    """
-    في هذه المرحلة نجلب المصادر التي تحتوي على RSS فقط.
-    المواقع التي لا تحتوي RSS سنضيف لها طرق جلب خاصة لاحقًا.
-    """
     return fetch_rss(source)
 
 
@@ -81,6 +79,41 @@ def remove_duplicates(articles):
         unique[article["id"]] = article
 
     return list(unique.values())
+
+
+def send_to_telegram(article):
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        print("❌ Telegram secrets are missing")
+        return False
+
+    message = (
+        "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
+        f"📰 <b>{article['title']}</b>\n\n"
+        f"📌 المصدر: {article['source']}\n"
+        f"🔗 <a href=\"{article['url']}\">قراءة الخبر</a>"
+    )
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    response = requests.post(
+        url,
+        data={
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": False
+        },
+        timeout=30
+    )
+
+    if response.ok:
+        return True
+
+    print(f"❌ Telegram error: {response.text}")
+    return False
 
 
 def main():
@@ -122,11 +155,32 @@ def main():
     print(f"Unique articles found: {len(articles)}")
     print("=" * 60)
 
-    for article in articles[:20]:
+    # نرسل أول 5 أخبار فقط للاختبار
+    test_articles = articles[:5]
+
+    if not test_articles:
+        print("⚠️ No articles found")
+        return
+
+    print(f"📤 Sending {len(test_articles)} articles to Telegram...")
+
+    sent = 0
+
+    for article in test_articles:
         print()
         print(f"📰 {article['title']}")
         print(f"📌 المصدر: {article['source']}")
-        print(f"🔗 {article['url']}")
+
+        if send_to_telegram(article):
+            print("✅ Sent to Telegram")
+            sent += 1
+        else:
+            print("❌ Failed to send")
+
+    print()
+    print("=" * 60)
+    print(f"Telegram messages sent: {sent}/{len(test_articles)}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
