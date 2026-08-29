@@ -5,7 +5,7 @@ from pathlib import Path
 import feedparser
 import requests
 
-BASE_DIR = Path(file).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 SOURCES_FILE = BASE_DIR / "config" / "sources.json"
 
 TELEGRAM_BOT_TOKEN = None
