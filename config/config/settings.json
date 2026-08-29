@@ -1,0 +1,51 @@
+{
+  "language": "ar",
+  "timezone": "Asia/Riyadh",
+
+  "telegram": {
+    "enabled": true
+  },
+
+  "schedule": {
+    "enabled": true,
+    "daily_time": "08:00"
+  },
+
+  "newsletter": {
+    "title": "🇸🇦 النشرة الاقتصادية السعودية",
+    "max_articles": 10,
+    "include_sources": true,
+    "include_links": true,
+    "include_summary": true,
+    "include_market_impact": true
+  },
+
+  "filters": {
+    "saudi_economy_only": true,
+
+    "topics": {
+      "saudi_economy": true,
+      "markets": true,
+      "tasi": true,
+      "companies": true,
+      "banks": true,
+      "investment": true,
+      "oil": true,
+      "energy": true,
+      "real_estate": true,
+      "government": true,
+      "budget": true,
+      "employment": true,
+      "inflation": true,
+      "technology": true,
+      "vision_2030": true
+    }
+  },
+
+  "quality": {
+    "remove_duplicates": true,
+    "prefer_official_sources": true,
+    "require_source_link": true,
+    "minimum_priority": 2
+  }
+}
