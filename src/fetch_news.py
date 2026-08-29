@@ -6,34 +6,36 @@ from pathlib import Path
 import feedparser
 import requests
 
-BASE_DIR = Path(**file**).resolve().parent.parent
-SOURCES_FILE = BASE_DIR / "config" / "sources.json"
+SOURCES_FILE = Path("config") / "sources.json"
 
 def load_sources():
 with open(SOURCES_FILE, "r", encoding="utf-8") as f:
 data = json.load(f)
 
 ```
+sources = data.get("sources", [])
+
 return [
     source
-    for source in data.get("sources", [])
+    for source in sources
     if source.get("enabled", True)
 ]
 ```
 
 def make_id(title, url):
-value = f"{title}|{url}".encode("utf-8")
-return hashlib.sha256(value).hexdigest()[:16]
+text = title + "|" + url
+return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 def fetch_rss(source):
+name = source.get("name", "Unknown")
 rss_url = source.get("rss")
 
 ```
 if not rss_url:
-    print(f"No RSS configured: {source.get('name', 'Unknown')}")
+    print("No RSS configured: " + name)
     return []
 
-print(f"RSS: {rss_url}")
+print("RSS: " + rss_url)
 
 try:
     response = requests.get(
@@ -44,15 +46,15 @@ try:
         }
     )
 
-    print(f"HTTP status: {response.status_code}")
+    print("HTTP status: " + str(response.status_code))
 
     if response.status_code != 200:
         return []
 
     feed = feedparser.parse(response.content)
 
-except Exception as e:
-    print(f"RSS error: {e}")
+except Exception as error:
+    print("RSS error: " + str(error))
     return []
 
 if not feed.entries:
@@ -68,27 +70,25 @@ for entry in feed.entries[:20]:
     if not title or not link:
         continue
 
-    published = (
-        entry.get("published")
-        or entry.get("updated")
-        or ""
-    )
+    published = entry.get("published", "")
+    if not published:
+        published = entry.get("updated", "")
 
-    articles.append(
-        {
-            "id": make_id(title, link),
-            "source": source.get("name", "Unknown"),
-            "country": source.get("country", ""),
-            "type": source.get("type", ""),
-            "priority": source.get("priority", 1),
-            "topics": source.get("topics", []),
-            "title": title,
-            "url": link,
-            "published": published,
-        }
-    )
+    article = {
+        "id": make_id(title, link),
+        "source": name,
+        "country": source.get("country", ""),
+        "type": source.get("type", ""),
+        "priority": source.get("priority", 1),
+        "topics": source.get("topics", []),
+        "title": title,
+        "url": link,
+        "published": published
+    }
 
-print(f"RSS articles found: {len(articles)}")
+    articles.append(article)
+
+print("RSS articles found: " + str(len(articles)))
 
 return articles
 ```
@@ -116,21 +116,23 @@ if not chat_id:
     print("ERROR: TELEGRAM_CHAT_ID is missing")
     return False
 
-telegram_url = f"https://api.telegram.org/bot{token}/sendMessage"
+api_url = "https://api.telegram.org/bot" + token + "/sendMessage"
+
+payload = {
+    "chat_id": chat_id,
+    "text": message,
+    "parse_mode": "HTML",
+    "disable_web_page_preview": False
+}
 
 try:
     response = requests.post(
-        telegram_url,
-        json={
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": False,
-        },
-        timeout=20,
+        api_url,
+        json=payload,
+        timeout=20
     )
 
-    print(f"Telegram HTTP status: {response.status_code}")
+    print("Telegram HTTP status: " + str(response.status_code))
 
     data = response.json()
 
@@ -138,11 +140,11 @@ try:
         print("Telegram message sent successfully")
         return True
 
-    print(f"Telegram error: {data}")
+    print("Telegram error: " + str(data))
     return False
 
-except Exception as e:
-    print(f"Telegram request error: {e}")
+except Exception as error:
+    print("Telegram error: " + str(error))
     return False
 ```
 
@@ -152,12 +154,14 @@ source = article["source"]
 url = article["url"]
 
 ```
-return (
+message = (
     "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
-    f"📰 <b>{title}</b>\n\n"
-    f"📌 المصدر: {source}\n"
-    f'🔗 <a href="{url}">قراءة الخبر</a>'
+    "📰 <b>" + title + "</b>\n\n"
+    "📌 المصدر: " + source + "\n"
+    "🔗 <a href=\"" + url + "\">قراءة الخبر</a>"
 )
+
+return message
 ```
 
 def main():
@@ -175,7 +179,9 @@ test_message = (
     "✅ اتصال Telegram يعمل بنجاح."
 )
 
-if send_telegram(test_message):
+telegram_ok = send_telegram(test_message)
+
+if telegram_ok:
     print("Telegram test succeeded")
 else:
     print("Telegram test failed")
@@ -187,11 +193,11 @@ print("=" * 60)
 
 try:
     sources = load_sources()
-except Exception as e:
-    print(f"ERROR loading sources.json: {e}")
+except Exception as error:
+    print("ERROR loading sources.json: " + str(error))
     return
 
-print(f"Enabled sources: {len(sources)}")
+print("Enabled sources: " + str(len(sources)))
 print()
 
 all_articles = []
@@ -203,38 +209,46 @@ for source in sources:
         articles = fetch_rss(source)
 
         if articles:
-            print(f"Found {len(articles)} articles: {name}")
             all_articles.extend(articles)
+            print("Found articles: " + name)
         else:
-            print(f"No articles: {name}")
+            print("No articles: " + name)
 
-    except Exception as e:
-        print(f"ERROR - {name}: {e}")
+    except Exception as error:
+        print(
+            "Source error - "
+            + name
+            + ": "
+            + str(error)
+        )
 
 articles = remove_duplicates(all_articles)
 
 articles.sort(
     key=lambda article: article.get("priority", 1),
-    reverse=True,
+    reverse=True
 )
 
 print()
 print("=" * 60)
-print(f"Unique articles found: {len(articles)}")
+print(
+    "Unique articles found: "
+    + str(len(articles))
+)
 print("=" * 60)
 
 if not articles:
     print("No news articles were found.")
     return
 
-sent = 0
-
 print()
-print("Sending news to Telegram...")
+print("Sending news to Telegram")
 print("=" * 60)
 
+sent = 0
+
 for article in articles[:10]:
-    print(f"Sending: {article['title']}")
+    print("Sending: " + article["title"])
 
     message = format_article(article)
 
@@ -243,7 +257,10 @@ for article in articles[:10]:
 
 print()
 print("=" * 60)
-print(f"News sent to Telegram: {sent}")
+print(
+    "News sent to Telegram: "
+    + str(sent)
+)
 print("=" * 60)
 ```
 
