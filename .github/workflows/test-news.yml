@@ -1,4 +1,4 @@
-name: Test News Fetcher
+name: Test News to Telegram
 
 on:
   workflow_dispatch:
@@ -21,4 +21,8 @@ jobs:
           pip install feedparser requests
 
       - name: Fetch news
-        run: python src/fetch_news.py
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python src/fetch_news.py
