@@ -1,3 +1,4 @@
+```python
 import json
 import hashlib
 import os
@@ -27,45 +28,103 @@ def make_id(title, url):
     return hashlib.sha256(value).hexdigest()[:16]
 
 
+def test_telegram():
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+
+    print("=" * 60)
+    print("📡 Testing Telegram connection")
+    print("=" * 60)
+
+    if not token:
+        print("❌ TELEGRAM_BOT_TOKEN is missing")
+        return False
+
+    if not chat_id:
+        print("❌ TELEGRAM_CHAT_ID is missing")
+        return False
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+
+    message = (
+        "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
+        "✅ اختبار الاتصال بنجاح.\n"
+        "سيتم إرسال الأخبار هنا تلقائيًا."
+    )
+
+    try:
+        response = requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML"
+            },
+            timeout=30
+        )
+
+        print(f"Telegram HTTP status: {response.status_code}")
+        print(f"Telegram response: {response.text}")
+
+        if response.ok:
+            print("✅ Telegram test succeeded")
+            return True
+
+        print("❌ Telegram test failed")
+        return False
+
+    except Exception as e:
+        print(f"❌ Telegram connection error: {e}")
+        return False
+
+
 def fetch_rss(source):
     rss_url = source.get("rss")
 
     if not rss_url:
         return []
 
-    feed = feedparser.parse(rss_url)
+    print(f"   RSS: {rss_url}")
 
-    if getattr(feed, "bozo", False) and not feed.entries:
+    try:
+        feed = feedparser.parse(rss_url)
+
+        if getattr(feed, "bozo", False) and not feed.entries:
+            print("   ⚠️ RSS returned no entries")
+            return []
+
+        articles = []
+
+        for entry in feed.entries[:30]:
+            title = entry.get("title", "").strip()
+            link = entry.get("link", "").strip()
+
+            if not title or not link:
+                continue
+
+            published = (
+                entry.get("published")
+                or entry.get("updated")
+                or ""
+            )
+
+            articles.append({
+                "id": make_id(title, link),
+                "source": source.get("name", "Unknown"),
+                "country": source.get("country", ""),
+                "type": source.get("type", ""),
+                "priority": source.get("priority", 1),
+                "topics": source.get("topics", []),
+                "title": title,
+                "url": link,
+                "published": published
+            })
+
+        return articles
+
+    except Exception as e:
+        print(f"   ❌ RSS error: {e}")
         return []
-
-    articles = []
-
-    for entry in feed.entries[:30]:
-        title = entry.get("title", "").strip()
-        link = entry.get("link", "").strip()
-
-        if not title or not link:
-            continue
-
-        published = (
-            entry.get("published")
-            or entry.get("updated")
-            or ""
-        )
-
-        articles.append({
-            "id": make_id(title, link),
-            "source": source.get("name", "Unknown"),
-            "country": source.get("country", ""),
-            "type": source.get("type", ""),
-            "priority": source.get("priority", 1),
-            "topics": source.get("topics", []),
-            "title": title,
-            "url": link,
-            "published": published
-        })
-
-    return articles
 
 
 def fetch_source(source):
@@ -98,30 +157,49 @@ def send_to_telegram(article):
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-    response = requests.post(
-        url,
-        data={
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": False
-        },
-        timeout=30
-    )
+    try:
+        response = requests.post(
+            url,
+            data={
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": False
+            },
+            timeout=30
+        )
 
-    if response.ok:
-        return True
+        if response.ok:
+            return True
 
-    print(f"❌ Telegram error: {response.text}")
-    return False
+        print(f"❌ Telegram error: {response.text}")
+        return False
+
+    except Exception as e:
+        print(f"❌ Telegram connection error: {e}")
+        return False
 
 
 def main():
-    sources = load_sources()
-
     print("=" * 60)
     print("🇸🇦 Saudi Economy Daily - News Fetcher")
     print("=" * 60)
+
+    # اختبار Telegram أولًا
+    telegram_ok = test_telegram()
+
+    if not telegram_ok:
+        print()
+        print("❌ Telegram test failed.")
+        print("⚠️ News sending will not continue.")
+        return
+
+    print()
+    print("=" * 60)
+    print("📰 Starting news collection")
+    print("=" * 60)
+
+    sources = load_sources()
 
     print(f"Enabled sources: {len(sources)}")
     print()
@@ -138,7 +216,10 @@ def main():
                 print(f"✅ {name}: {len(articles)} articles")
                 all_articles.extend(articles)
             else:
-                print(f"⚪ {name}: no RSS configured")
+                if source.get("rss"):
+                    print(f"⚪ {name}: RSS returned no articles")
+                else:
+                    print(f"⚪ {name}: no RSS configured")
 
         except Exception as e:
             print(f"❌ {name}: {e}")
@@ -155,19 +236,22 @@ def main():
     print(f"Unique articles found: {len(articles)}")
     print("=" * 60)
 
-    # نرسل أول 5 أخبار فقط للاختبار
-    test_articles = articles[:5]
-
-    if not test_articles:
-        print("⚠️ No articles found")
+    if not articles:
+        print()
+        print("⚠️ No news articles were found.")
+        print("Telegram is working, but there are no RSS articles to send.")
         return
 
-    print(f"📤 Sending {len(test_articles)} articles to Telegram...")
+    # نرسل أول 5 أخبار للاختبار
+    test_articles = articles[:5]
+
+    print()
+    print(f"📤 Sending {len(test_articles)} news articles to Telegram...")
+    print()
 
     sent = 0
 
     for article in test_articles:
-        print()
         print(f"📰 {article['title']}")
         print(f"📌 المصدر: {article['source']}")
 
@@ -177,11 +261,13 @@ def main():
         else:
             print("❌ Failed to send")
 
-    print()
+        print()
+
     print("=" * 60)
-    print(f"Telegram messages sent: {sent}/{len(test_articles)}")
+    print(f"📤 Telegram messages sent: {sent}/{len(test_articles)}")
     print("=" * 60)
 
 
 if __name__ == "__main__":
     main()
+```
