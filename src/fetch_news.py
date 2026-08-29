@@ -1,15 +1,13 @@
 import json
 import hashlib
+import os
 from pathlib import Path
 
 import feedparser
 import requests
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(**file**).resolve().parent.parent
 SOURCES_FILE = BASE_DIR / "config" / "sources.json"
-
-TELEGRAM_BOT_TOKEN = None
-TELEGRAM_CHAT_ID = None
 
 def load_sources():
 with open(SOURCES_FILE, "r", encoding="utf-8") as f:
@@ -42,14 +40,13 @@ try:
         rss_url,
         timeout=20,
         headers={
-            "User-Agent": "Mozilla/5.0 SaudiEconomyDaily/1.0"
+            "User-Agent": "Mozilla/5.0"
         }
     )
 
     print(f"HTTP status: {response.status_code}")
 
     if response.status_code != 200:
-        print(f"RSS request failed: {response.status_code}")
         return []
 
     feed = feedparser.parse(response.content)
@@ -77,25 +74,24 @@ for entry in feed.entries[:20]:
         or ""
     )
 
-    articles.append({
-        "id": make_id(title, link),
-        "source": source.get("name", "Unknown"),
-        "country": source.get("country", ""),
-        "type": source.get("type", ""),
-        "priority": source.get("priority", 1),
-        "topics": source.get("topics", []),
-        "title": title,
-        "url": link,
-        "published": published
-    })
+    articles.append(
+        {
+            "id": make_id(title, link),
+            "source": source.get("name", "Unknown"),
+            "country": source.get("country", ""),
+            "type": source.get("type", ""),
+            "priority": source.get("priority", 1),
+            "topics": source.get("topics", []),
+            "title": title,
+            "url": link,
+            "published": published,
+        }
+    )
 
 print(f"RSS articles found: {len(articles)}")
 
 return articles
 ```
-
-def fetch_source(source):
-return fetch_rss(source)
 
 def remove_duplicates(articles):
 unique = {}
@@ -108,26 +104,30 @@ return list(unique.values())
 ```
 
 def send_telegram(message):
-token = TELEGRAM_BOT_TOKEN
-chat_id = TELEGRAM_CHAT_ID
+token = os.getenv("TELEGRAM_BOT_TOKEN")
+chat_id = os.getenv("TELEGRAM_CHAT_ID")
 
 ```
-if not token or not chat_id:
-    print("Telegram credentials are not available")
+if not token:
+    print("ERROR: TELEGRAM_BOT_TOKEN is missing")
     return False
 
-url = f"https://api.telegram.org/bot{token}/sendMessage"
+if not chat_id:
+    print("ERROR: TELEGRAM_CHAT_ID is missing")
+    return False
+
+telegram_url = f"https://api.telegram.org/bot{token}/sendMessage"
 
 try:
     response = requests.post(
-        url,
+        telegram_url,
         json={
             "chat_id": chat_id,
             "text": message,
             "parse_mode": "HTML",
-            "disable_web_page_preview": False
+            "disable_web_page_preview": False,
         },
-        timeout=20
+        timeout=20,
     )
 
     print(f"Telegram HTTP status: {response.status_code}")
@@ -142,7 +142,7 @@ try:
     return False
 
 except Exception as e:
-    print(f"Telegram send error: {e}")
+    print(f"Telegram request error: {e}")
     return False
 ```
 
@@ -153,29 +153,20 @@ url = article["url"]
 
 ```
 return (
-    f"🇸🇦 <b>Saudi Economy Daily</b>\n\n"
+    "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
     f"📰 <b>{title}</b>\n\n"
     f"📌 المصدر: {source}\n"
-    f"🔗 <a href=\"{url}\">قراءة الخبر</a>"
+    f'🔗 <a href="{url}">قراءة الخبر</a>'
 )
 ```
 
 def main():
-global TELEGRAM_BOT_TOKEN
-global TELEGRAM_CHAT_ID
+print("=" * 60)
+print("Saudi Economy Daily - News Fetcher")
+print("=" * 60)
 
 ```
-import os
-
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-print("=" * 60)
-print("🇸🇦 Saudi Economy Daily - News Fetcher")
-print("=" * 60)
-
 print()
-print("=" * 60)
 print("Testing Telegram connection")
 print("=" * 60)
 
@@ -197,7 +188,7 @@ print("=" * 60)
 try:
     sources = load_sources()
 except Exception as e:
-    print(f"Failed to load sources.json: {e}")
+    print(f"ERROR loading sources.json: {e}")
     return
 
 print(f"Enabled sources: {len(sources)}")
@@ -209,7 +200,7 @@ for source in sources:
     name = source.get("name", "Unknown")
 
     try:
-        articles = fetch_source(source)
+        articles = fetch_rss(source)
 
         if articles:
             print(f"Found {len(articles)} articles: {name}")
@@ -218,13 +209,13 @@ for source in sources:
             print(f"No articles: {name}")
 
     except Exception as e:
-        print(f"Source error - {name}: {e}")
+        print(f"ERROR - {name}: {e}")
 
 articles = remove_duplicates(all_articles)
 
 articles.sort(
     key=lambda article: article.get("priority", 1),
-    reverse=True
+    reverse=True,
 )
 
 print()
@@ -236,16 +227,14 @@ if not articles:
     print("No news articles were found.")
     return
 
-print()
-print("Sending news to Telegram...")
-
 sent = 0
 
+print()
+print("Sending news to Telegram...")
+print("=" * 60)
+
 for article in articles[:10]:
-    print()
-    print(f"📰 {article['title']}")
-    print(f"📌 {article['source']}")
-    print(f"🔗 {article['url']}")
+    print(f"Sending: {article['title']}")
 
     message = format_article(article)
 
