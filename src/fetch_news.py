@@ -5,6 +5,9 @@ import requests
 import feedparser
 from urllib.parse import quote
 
+from ai_editor import analyze_article
+
+
 # ============================================================
 # Configuration
 # ============================================================
@@ -15,7 +18,10 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 SOURCES_FILE = "config/sources.json"
 
 MAX_ARTICLES_PER_SOURCE = 3
+MAX_AI_ARTICLES = 3
+
 REQUEST_TIMEOUT = 20
+
 
 # ============================================================
 # Helpers
@@ -53,7 +59,10 @@ def clean_text(text):
 
 def article_id(title, url):
     value = clean_text(title) + "|" + clean_text(url)
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    return hashlib.sha256(
+        value.encode("utf-8")
+    ).hexdigest()
 
 
 def get_feed(url):
@@ -87,8 +96,18 @@ def extract_articles(entries, source):
     articles = []
 
     for entry in entries[:MAX_ARTICLES_PER_SOURCE]:
-        title = clean_text(entry.get("title", ""))
-        url = clean_text(entry.get("link", ""))
+
+        title = clean_text(
+            entry.get("title", "")
+        )
+
+        url = clean_text(
+            entry.get("link", "")
+        )
+
+        description = clean_text(
+            entry.get("summary", "")
+        )
 
         if not title or not url:
             continue
@@ -97,8 +116,15 @@ def extract_articles(entries, source):
             "id": article_id(title, url),
             "title": title,
             "url": url,
-            "source": source.get("name", "مصدر غير معروف"),
-            "priority": source.get("priority", 1)
+            "content": description,
+            "source": source.get(
+                "name",
+                "مصدر غير معروف"
+            ),
+            "priority": source.get(
+                "priority",
+                1
+            )
         })
 
     return articles
@@ -109,12 +135,19 @@ def extract_articles(entries, source):
 # ============================================================
 
 def fetch_source(source):
-    name = source.get("name", "Unknown")
-    methods = source.get("methods", [])
 
-    # Support old format:
-    # "rss": "https://example.com/feed"
+    name = source.get(
+        "name",
+        "Unknown"
+    )
+
+    methods = list(
+        source.get("methods", [])
+    )
+
+    # دعم sources.json القديم
     if source.get("rss"):
+
         methods.insert(
             0,
             {
@@ -129,28 +162,34 @@ def fetch_source(source):
     print("=" * 60)
 
     # --------------------------------------------------------
-    # Method 1: Direct RSS
+    # Direct RSS
     # --------------------------------------------------------
 
     for method in methods:
 
-        method_type = method.get("type")
+        if method.get("type") != "rss":
+            continue
 
-        if method_type == "rss":
-            rss_url = method.get("url")
+        rss_url = method.get("url")
 
-            if not rss_url:
-                continue
+        if not rss_url:
+            continue
 
-            entries = get_feed(rss_url)
+        entries = get_feed(rss_url)
 
-            if entries:
-                print(f"    SUCCESS: {name} via RSS")
+        if entries:
 
-                return extract_articles(entries, source)
+            print(
+                f"    SUCCESS: {name} via RSS"
+            )
+
+            return extract_articles(
+                entries,
+                source
+            )
 
     # --------------------------------------------------------
-    # Method 2: Google News RSS
+    # Google News RSS
     # --------------------------------------------------------
 
     for method in methods:
@@ -163,19 +202,32 @@ def fetch_source(source):
         if not query:
             continue
 
-        google_url = make_google_news_url(query)
+        google_url = make_google_news_url(
+            query
+        )
 
-        print(f"    Trying Google News RSS")
-        print(f"    Query: {query}")
+        print(
+            "    Trying Google News RSS"
+        )
 
-        entries = get_feed(google_url)
+        entries = get_feed(
+            google_url
+        )
 
         if entries:
-            print(f"    SUCCESS: {name} via Google News")
 
-            return extract_articles(entries, source)
+            print(
+                f"    SUCCESS: {name} via Google News"
+            )
 
-    print(f"    FAILED: No articles found for {name}")
+            return extract_articles(
+                entries,
+                source
+            )
+
+    print(
+        f"    FAILED: No articles found for {name}"
+    )
 
     return []
 
@@ -185,17 +237,26 @@ def fetch_source(source):
 # ============================================================
 
 def send_telegram(message):
+
     if not TOKEN:
-        print("ERROR: TELEGRAM_BOT_TOKEN is missing")
+        print(
+            "ERROR: TELEGRAM_BOT_TOKEN is missing"
+        )
         return False
 
     if not CHAT_ID:
-        print("ERROR: TELEGRAM_CHAT_ID is missing")
+        print(
+            "ERROR: TELEGRAM_CHAT_ID is missing"
+        )
         return False
 
-    telegram_url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    telegram_url = (
+        f"https://api.telegram.org/bot"
+        f"{TOKEN}/sendMessage"
+    )
 
     try:
+
         response = requests.post(
             telegram_url,
             json={
@@ -207,14 +268,115 @@ def send_telegram(message):
             timeout=REQUEST_TIMEOUT
         )
 
-        print(f"Telegram status: {response.status_code}")
-        print(response.text)
+        print(
+            f"Telegram status: {response.status_code}"
+        )
+
+        if not response.ok:
+            print(response.text)
 
         return response.ok
 
     except Exception as e:
-        print(f"Telegram ERROR: {e}")
+
+        print(
+            f"Telegram ERROR: {e}"
+        )
+
         return False
+
+
+# ============================================================
+# Telegram message
+# ============================================================
+
+def build_message(article, ai):
+
+    category = ai.get(
+        "category",
+        "economy"
+    )
+
+    category_names = {
+        "oil": "النفط والطاقة",
+        "markets": "الأسواق",
+        "banks": "البنوك والقطاع المالي",
+        "companies": "الشركات",
+        "investment": "الاستثمار",
+        "government": "الحكومة والأنظمة",
+        "real_estate": "العقارات",
+        "employment": "سوق العمل",
+        "technology": "التقنية",
+        "tourism": "السياحة",
+        "industry": "الصناعة",
+        "economy": "الاقتصاد",
+        "other": "أخرى"
+    }
+
+    category_name = category_names.get(
+        category,
+        category
+    )
+
+    importance = ai.get(
+        "importance",
+        0
+    )
+
+    headline = clean_text(
+        ai.get("headline", "")
+    )
+
+    summary = clean_text(
+        ai.get("summary", "")
+    )
+
+    why = clean_text(
+        ai.get("why_it_matters", "")
+    )
+
+    key_facts = ai.get(
+        "key_facts",
+        []
+    )
+
+    facts_text = ""
+
+    if key_facts:
+
+        facts_text = "\n\n".join(
+            f"• {clean_text(fact)}"
+            for fact in key_facts[:3]
+        )
+
+    message = (
+        "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
+        f"📰 <b>{headline}</b>\n\n"
+        f"{summary}\n\n"
+    )
+
+    if facts_text:
+
+        message += (
+            "📌 <b>أبرز المعلومات:</b>\n"
+            f"{facts_text}\n\n"
+        )
+
+    if why:
+
+        message += (
+            "💡 <b>لماذا يهم؟</b>\n"
+            f"{why}\n\n"
+        )
+
+    message += (
+        f"📊 القطاع: {category_name}\n"
+        f"🔴 الأهمية: {importance}/100\n\n"
+        f"📰 المصدر: {article['source']}\n"
+        f"🔗 {article['url']}"
+    )
+
+    return message
 
 
 # ============================================================
@@ -225,38 +387,56 @@ def main():
 
     print("")
     print("🇸🇦 Saudi Economy Daily")
-    print("Starting news collection...")
+    print("Starting AI news collection...")
     print("")
 
-    if not os.path.exists(SOURCES_FILE):
-        print(f"ERROR: Sources file not found: {SOURCES_FILE}")
+    if not os.path.exists(
+        SOURCES_FILE
+    ):
+
+        print(
+            f"ERROR: Sources file not found: "
+            f"{SOURCES_FILE}"
+        )
+
         return
 
     sources = load_sources()
 
-    print(f"Enabled sources: {len(sources)}")
+    print(
+        f"Enabled sources: {len(sources)}"
+    )
 
     all_articles = []
     seen_ids = set()
 
     # --------------------------------------------------------
-    # Fetch all sources
+    # Collect news
     # --------------------------------------------------------
 
     for source in sources:
 
         try:
-            articles = fetch_source(source)
+
+            articles = fetch_source(
+                source
+            )
 
             for article in articles:
 
                 if article["id"] in seen_ids:
                     continue
 
-                seen_ids.add(article["id"])
-                all_articles.append(article)
+                seen_ids.add(
+                    article["id"]
+                )
+
+                all_articles.append(
+                    article
+                )
 
         except Exception as e:
+
             print(
                 f"ERROR while processing "
                 f"{source.get('name', 'Unknown')}: {e}"
@@ -267,57 +447,140 @@ def main():
     # --------------------------------------------------------
 
     all_articles.sort(
-        key=lambda x: x.get("priority", 1),
+        key=lambda x: x.get(
+            "priority",
+            1
+        ),
         reverse=True
     )
 
     print("")
     print("=" * 60)
-    print(f"TOTAL ARTICLES FOUND: {len(all_articles)}")
+    print(
+        f"TOTAL ARTICLES FOUND: "
+        f"{len(all_articles)}"
+    )
     print("=" * 60)
 
-    # --------------------------------------------------------
-    # No articles
-    # --------------------------------------------------------
-
     if not all_articles:
-        print("No articles found.")
+
+        print(
+            "No articles found."
+        )
+
         return
 
     # --------------------------------------------------------
-    # TEST MODE
-    #
-    # We intentionally send only a small number of articles
-    # during the first test.
+    # AI TEST
     # --------------------------------------------------------
 
-    test_articles = all_articles[:10]
+    candidates = all_articles[
+        :MAX_AI_ARTICLES
+    ]
 
     print("")
-    print(f"Sending {len(test_articles)} test articles to Telegram...")
+    print(
+        f"Sending {len(candidates)} "
+        "articles to AI..."
+    )
     print("")
 
-    success_count = 0
+    published = 0
 
-    for article in test_articles:
+    for index, article in enumerate(
+        candidates,
+        start=1
+    ):
 
-        message = (
-            "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
-            f"📰 <b>{article['title']}</b>\n\n"
-            f"📌 المصدر: {article['source']}\n"
-            f"🔗 {article['url']}"
+        print("")
+        print(
+            "=" * 60
         )
 
-        print(f"Sending: {article['title']}")
+        print(
+            f"AI ARTICLE {index}/{len(candidates)}"
+        )
 
-        if send_telegram(message):
-            success_count += 1
+        print(
+            f"Title: {article['title']}"
+        )
+
+        ai_result = analyze_article(
+            article
+        )
+
+        if not ai_result:
+
+            print(
+                "AI failed. Skipping article."
+            )
+
+            continue
+
+        print(
+            "AI result:"
+        )
+
+        print(
+            json.dumps(
+                ai_result,
+                ensure_ascii=False,
+                indent=2
+            )
+        )
+
+        publish = ai_result.get(
+            "publish",
+            False
+        )
+
+        importance = ai_result.get(
+            "importance",
+            0
+        )
+
+        # ----------------------------------------------------
+        # Publish threshold
+        # ----------------------------------------------------
+
+        if (
+            publish is True
+            and importance >= 75
+        ):
+
+            message = build_message(
+                article,
+                ai_result
+            )
+
+            if send_telegram(
+                message
+            ):
+
+                published += 1
+
+                print(
+                    "✅ Published to Telegram"
+                )
+
+        else:
+
+            print(
+                "❌ AI decided this article "
+                "is not important enough."
+            )
 
     print("")
     print("=" * 60)
-    print(f"Telegram messages sent successfully: {success_count}/{len(test_articles)}")
+
+    print(
+        f"AI articles published: "
+        f"{published}"
+    )
+
     print("=" * 60)
 
 
 if __name__ == "__main__":
     main()
+
