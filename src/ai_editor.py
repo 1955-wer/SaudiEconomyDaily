@@ -91,22 +91,30 @@ publish=false
 
 التصنيفات المسموحة فقط:
 
-oil
-markets
-banks
-companies
-investment
-government
-real_estate
-employment
-technology
-tourism
-industry
-mining
-transport
-economy
-other
-"""
+يجب أن تكون إجابتك بصيغة JSON صحيحة فقط.
+
+لا تكتب أي مقدمة.
+لا تكتب شرحاً.
+لا تستخدم Markdown.
+لا تستخدم ```json.
+
+استخدم هذا الشكل بالضبط:
+
+{
+  "publish": true,
+  "importance": 85,
+  "category": "investment",
+  "headline": "عنوان مختصر وواضح",
+  "summary": "ملخص الخبر في فقرة قصيرة",
+  "why_it_matters": "لماذا هذا الخبر مهم للاقتصاد السعودي",
+  "key_facts": [
+    "معلومة مهمة",
+    "رقم أو معلومة مهمة",
+    "معلومة إضافية"
+  ]
+}
+
+
 
 
 # ============================================================
