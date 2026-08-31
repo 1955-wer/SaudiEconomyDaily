@@ -4,26 +4,54 @@ on:
   workflow_dispatch:
 
 jobs:
+
   fetch-news:
+
     runs-on: ubuntu-latest
 
     steps:
+
+      # ======================================================
+      # Download project
+      # ======================================================
+
       - name: Checkout
         uses: actions/checkout@v4
 
+
+      # ======================================================
+      # Python
+      # ======================================================
+
       - name: Setup Python
         uses: actions/setup-python@v5
+
         with:
           python-version: "3.12"
 
+
+      # ======================================================
+      # Install dependencies
+      # ======================================================
+
       - name: Install dependencies
         run: |
-          pip install feedparser requests
+          pip install feedparser requests beautifulsoup4
+
+
+      # ======================================================
+      # Run Saudi Economy Daily
+      # ======================================================
 
       - name: Fetch news
         env:
+
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
         run: |
+
           python src/fetch_news.py
