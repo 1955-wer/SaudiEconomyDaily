@@ -267,28 +267,25 @@ def analyze_article(article):
     }
 
 
-    payload = {
-        "model": MODEL,
+payload = {
+    "model": MODEL,
 
-        "messages": [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ],
-
-        "temperature": 0.1,
-
-        "max_tokens": 900,
-
-        "response_format": {
-            "type": "json_object"
+    "messages": [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": user_prompt
         }
-    }
+    ],
+
+    "temperature": 0.1,
+
+    "max_tokens": 900
+}
+
 
 
     for attempt in range(1, MAX_RETRIES + 1):
