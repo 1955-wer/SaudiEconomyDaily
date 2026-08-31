@@ -12,11 +12,10 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# الموديل الأساسي
 MODEL = "inclusionai/ling-3.0-flash-fin:free"
 
-# عدد المحاولات عند حدوث خطأ مؤقت
 MAX_RETRIES = 3
+
 
 # ============================================================
 # System Prompt
@@ -28,8 +27,6 @@ SYSTEM_PROMPT = """
 مهمتك تحليل الأخبار التي تصل إليك وتحديد هل تستحق النشر في قناة
 Saudi Economy Daily أم لا.
 
-القناة متخصصة في الأخبار الاقتصادية السعودية.
-
 ركز على الأخبار التي لها تأثير حقيقي على:
 
 - الاقتصاد السعودي
@@ -37,7 +34,7 @@ Saudi Economy Daily أم لا.
 - أرامكو
 - البنوك والقطاع المالي
 - سوق الأسهم السعودي
-- الشركات السعودية الكبرى
+- الشركات السعودية
 - الاستثمار
 - المشاريع الكبرى
 - رؤية السعودية 2030
@@ -55,9 +52,9 @@ Saudi Economy Daily أم لا.
 - النقل والبنية التحتية
 - الاستثمارات الأجنبية
 
-تجاهل الأخبار الصغيرة أو العادية التي لا تحمل أهمية اقتصادية حقيقية.
+تجاهل الأخبار الصغيرة أو العامة التي لا تحمل أهمية اقتصادية حقيقية.
 
-قواعد مهمة جداً:
+قواعد مهمة:
 
 1. لا تخترع أي معلومة.
 2. لا تخترع أي رقم.
@@ -68,10 +65,10 @@ Saudi Economy Daily أم لا.
 7. إذا كان الخبر غير واضح أو ناقصاً، اجعل publish=false.
 8. إذا كان الخبر مجرد إعلان عادي أو خبر غير اقتصادي، اجعل publish=false.
 9. لا تعتبر كل خبر عن السعودية خبراً اقتصادياً.
-10. الأهمية يجب أن تعكس التأثير الاقتصادي الحقيقي على السعودية.
+10. الأهمية يجب أن تعكس التأثير الاقتصادي الحقيقي.
 11. اكتب بالعربية الفصحى الواضحة.
 12. اجعل الملخص مختصراً ومفيداً.
-13. لا تستخدم مبالغات مثل "تاريخي" أو "ضخم" إلا إذا كان الخبر نفسه يثبت ذلك.
+13. لا تستخدم مبالغات غير موجودة في الخبر.
 
 درجات الأهمية:
 
@@ -82,23 +79,39 @@ Saudi Economy Daily أم لا.
 95-100 = عاجل / شديد الأهمية
 
 إذا كان الخبر يستحق النشر:
-
 publish=true
 
 إذا لم يكن يستحق النشر:
-
 publish=false
 
-التصنيفات المسموحة فقط:
+التصنيفات المسموحة:
 
-يجب أن تكون إجابتك بصيغة JSON صحيحة فقط.
+oil
+markets
+banks
+companies
+investment
+government
+real_estate
+employment
+technology
+tourism
+industry
+mining
+transport
+economy
+other
+
+مهم جداً:
+
+يجب أن تكون إجابتك JSON صحيحة فقط.
 
 لا تكتب أي مقدمة.
-لا تكتب شرحاً.
+لا تكتب شرحاً خارج JSON.
 لا تستخدم Markdown.
 لا تستخدم ```json.
 
-استخدم هذا الشكل بالضبط:
+استخدم هذا الشكل:
 
 {
   "publish": true,
@@ -113,32 +126,34 @@ publish=false
     "معلومة إضافية"
   ]
 }
-
-
+"""
 
 
 # ============================================================
-# Helpers
+# Clean AI JSON
 # ============================================================
 
 def clean_json_text(text):
-    """
-    تنظيف إجابة الذكاء الاصطناعي إذا أضاف Markdown أو نصاً حول JSON.
-    """
 
     if not text:
         return ""
 
     text = text.strip()
 
-    # إزالة Markdown code fences
-    if text.startswith("```"):
-        text = text.replace("```json", "")
-        text = text.replace("```JSON", "")
-        text = text.replace("```", "")
-        text = text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
 
-    # محاولة استخراج أول { وآخر }
+    elif text.startswith("```JSON"):
+        text = text[7:]
+
+    elif text.startswith("```"):
+        text = text[3:]
+
+    if text.endswith("```"):
+        text = text[:-3]
+
+    text = text.strip()
+
     first = text.find("{")
     last = text.rfind("}")
 
@@ -148,27 +163,40 @@ def clean_json_text(text):
     return text.strip()
 
 
+# ============================================================
+# Validate AI result
+# ============================================================
+
 def validate_result(result):
-    """
-    التأكد من أن نتيجة AI تحتوي على الحقول المطلوبة.
-    """
 
     if not isinstance(result, dict):
         return None
 
-    publish = result.get("publish", False)
+    publish = result.get(
+        "publish",
+        False
+    )
 
     if not isinstance(publish, bool):
         publish = False
 
     try:
-        importance = int(result.get("importance", 0))
+        importance = int(
+            result.get(
+                "importance",
+                0
+            )
+        )
     except Exception:
         importance = 0
 
-    importance = max(0, min(100, importance))
-
-    category = result.get("category", "other")
+    importance = max(
+        0,
+        min(
+            100,
+            importance
+        )
+    )
 
     allowed_categories = {
         "oil",
@@ -188,26 +216,58 @@ def validate_result(result):
         "other"
     }
 
+    category = result.get(
+        "category",
+        "other"
+    )
+
     if category not in allowed_categories:
         category = "other"
 
-    headline = str(result.get("headline", "")).strip()
-    summary = str(result.get("summary", "")).strip()
-    why = str(result.get("why_it_matters", "")).strip()
+    headline = str(
+        result.get(
+            "headline",
+            ""
+        )
+    ).strip()
 
-    key_facts = result.get("key_facts", [])
+    summary = str(
+        result.get(
+            "summary",
+            ""
+        )
+    ).strip()
 
-    if not isinstance(key_facts, list):
+    why_it_matters = str(
+        result.get(
+            "why_it_matters",
+            ""
+        )
+    ).strip()
+
+    key_facts = result.get(
+        "key_facts",
+        []
+    )
+
+    if not isinstance(
+        key_facts,
+        list
+    ):
         key_facts = []
 
     key_facts = [
-        str(item).strip()
-        for item in key_facts
-        if str(item).strip()
-    ][:5]
+        str(fact).strip()
+        for fact in key_facts
+        if str(fact).strip()
+    ]
 
-    # إذا كانت البيانات ناقصة، لا ننشر
-    if not headline or not summary:
+    key_facts = key_facts[:5]
+
+    if not headline:
+        publish = False
+
+    if not summary:
         publish = False
 
     return {
@@ -216,30 +276,56 @@ def validate_result(result):
         "category": category,
         "headline": headline,
         "summary": summary,
-        "why_it_matters": why,
+        "why_it_matters": why_it_matters,
         "key_facts": key_facts
     }
 
 
 # ============================================================
-# AI Analysis
+# Analyze Article
 # ============================================================
 
 def analyze_article(article):
 
     if not OPENROUTER_API_KEY:
-        print("ERROR: OPENROUTER_API_KEY is missing")
+
+        print(
+            "ERROR: OPENROUTER_API_KEY is missing"
+        )
+
         return None
 
-    title = str(article.get("title", "")).strip()
-    source = str(article.get("source", "")).strip()
-    url = str(article.get("url", "")).strip()
-    content = str(article.get("content", "")).strip()
+    title = str(
+        article.get(
+            "title",
+            ""
+        )
+    ).strip()
+
+    source = str(
+        article.get(
+            "source",
+            ""
+        )
+    ).strip()
+
+    url = str(
+        article.get(
+            "url",
+            ""
+        )
+    ).strip()
+
+    content = str(
+        article.get(
+            "content",
+            ""
+        )
+    ).strip()
 
     if not content:
         content = title
 
-    # لا نرسل نصاً ضخماً جداً
     content = content[:18000]
 
     user_prompt = f"""
@@ -257,99 +343,145 @@ def analyze_article(article):
 محتوى الخبر:
 {content}
 
-مهم:
-
 اعتمد فقط على المعلومات الموجودة في العنوان ومحتوى الخبر.
 
 لا تستخدم معلومات خارجية.
 
 أريد النتيجة باللغة العربية.
+
+أعد JSON فقط.
 """
 
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
-        "X-OpenRouter-Title": "Saudi Economy Daily"
+        "Authorization":
+            f"Bearer {OPENROUTER_API_KEY}",
+
+        "Content-Type":
+            "application/json",
+
+        "HTTP-Referer":
+            "https://github.com/1955-wer/SaudiEconomyDaily",
+
+        "X-OpenRouter-Title":
+            "Saudi Economy Daily"
     }
 
 
-payload = {
-    "model": MODEL,
+    payload = {
 
-    "messages": [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        },
-        {
-            "role": "user",
-            "content": user_prompt
-        }
-    ],
+        "model":
+            MODEL,
 
-    "temperature": 0.1,
+        "messages": [
 
-    "max_tokens": 900
-}
+            {
+                "role":
+                    "system",
+
+                "content":
+                    SYSTEM_PROMPT
+            },
+
+            {
+                "role":
+                    "user",
+
+                "content":
+                    user_prompt
+            }
+        ],
+
+        "temperature":
+            0.1,
+
+        "max_tokens":
+            900
+    }
 
 
-
-    for attempt in range(1, MAX_RETRIES + 1):
+    for attempt in range(
+        1,
+        MAX_RETRIES + 1
+    ):
 
         try:
 
             print(
-                f"OpenRouter attempt {attempt}/{MAX_RETRIES}"
+                f"OpenRouter attempt "
+                f"{attempt}/{MAX_RETRIES}"
             )
 
+
             response = requests.post(
+
                 API_URL,
+
                 headers=headers,
+
                 json=payload,
+
                 timeout=90
             )
 
+
             print(
-                f"OpenRouter status: {response.status_code}"
+                f"OpenRouter status: "
+                f"{response.status_code}"
             )
 
 
             # ------------------------------------------------
-            # Success
+            # Successful response
             # ------------------------------------------------
 
             if response.ok:
 
                 data = response.json()
 
-                choices = data.get("choices", [])
+                choices = data.get(
+                    "choices",
+                    []
+                )
 
                 if not choices:
 
-                    print("ERROR: OpenRouter returned no choices")
+                    print(
+                        "ERROR: "
+                        "OpenRouter returned no choices"
+                    )
 
                     if attempt < MAX_RETRIES:
+
                         time.sleep(3)
+
                         continue
 
                     return None
 
 
-                message = choices[0].get("message", {})
+                message = choices[0].get(
+                    "message",
+                    {}
+                )
 
                 result_text = message.get(
                     "content",
                     ""
                 )
 
+
                 if not result_text:
 
-                    print("ERROR: AI returned empty content")
+                    print(
+                        "ERROR: "
+                        "AI returned empty content"
+                    )
 
                     if attempt < MAX_RETRIES:
+
                         time.sleep(3)
+
                         continue
 
                     return None
@@ -369,7 +501,8 @@ payload = {
                 except json.JSONDecodeError:
 
                     print(
-                        "ERROR: AI returned invalid JSON"
+                        "ERROR: "
+                        "AI returned invalid JSON"
                     )
 
                     print(
@@ -377,7 +510,9 @@ payload = {
                     )
 
                     if attempt < MAX_RETRIES:
+
                         time.sleep(3)
+
                         continue
 
                     return None
@@ -387,14 +522,18 @@ payload = {
                     result
                 )
 
+
                 if validated is None:
 
                     print(
-                        "ERROR: AI result validation failed"
+                        "ERROR: "
+                        "AI result validation failed"
                     )
 
                     if attempt < MAX_RETRIES:
+
                         time.sleep(3)
+
                         continue
 
                     return None
@@ -418,7 +557,8 @@ payload = {
                     wait_time = attempt * 5
 
                     print(
-                        f"Waiting {wait_time} seconds..."
+                        f"Waiting "
+                        f"{wait_time} seconds..."
                     )
 
                     time.sleep(
@@ -431,7 +571,7 @@ payload = {
 
 
             # ------------------------------------------------
-            # Temporary server errors
+            # Server error
             # ------------------------------------------------
 
             if response.status_code >= 500:
@@ -458,7 +598,7 @@ payload = {
 
 
             # ------------------------------------------------
-            # Other errors
+            # Other error
             # ------------------------------------------------
 
             print(
@@ -481,33 +621,36 @@ payload = {
             if attempt < MAX_RETRIES:
 
                 time.sleep(3)
+
                 continue
 
             return None
 
 
-        except requests.RequestException as e:
+        except requests.RequestException as error:
 
             print(
-                f"OpenRouter network error: {e}"
+                f"OpenRouter network error: "
+                f"{error}"
             )
 
             if attempt < MAX_RETRIES:
 
                 time.sleep(3)
+
                 continue
 
             return None
 
 
-        except Exception as e:
+        except Exception as error:
 
             print(
-                f"Unexpected AI error: {e}"
+                f"Unexpected AI error: "
+                f"{error}"
             )
 
             return None
 
 
     return None
-
