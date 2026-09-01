@@ -738,5 +738,185 @@
         }
       ]
     }
+        {
+      "name": "الهيئة العامة للإحصاء",
+      "url": "https://www.stats.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "statistics",
+        "inflation",
+        "gdp",
+        "employment",
+        "trade"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.stats.gov.sa/en/rss/news"
+        },
+        {
+          "type": "rss",
+          "url": "https://www.stats.gov.sa/en/rss/stats"
+        },
+        {
+          "type": "google_news",
+          "query": "site:stats.gov.sa السعودية الاقتصاد إحصاءات"
+        }
+      ]
+    },
+
+    {
+      "name": "صندوق الاستثمارات العامة",
+      "url": "https://www.pif.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "investment",
+        "companies",
+        "saudi_economy",
+        "vision_2030"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:pif.gov.sa السعودية صندوق الاستثمارات"
+        },
+        {
+          "type": "website",
+          "url": "https://www.pif.gov.sa/en/news-and-insights/press-releases/"
+        }
+      ]
+    },
+
+    {
+      "name": "هيئة السوق المالية",
+      "url": "https://cma.org.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "markets",
+        "regulation",
+        "investment",
+        "capital_market"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:cma.org.sa السعودية هيئة السوق المالية"
+        },
+        {
+          "type": "website",
+          "url": "https://cma.org.sa/"
+        }
+      ]
+    },
+
+    {
+      "name": "Saudi Exchange",
+      "url": "https://www.saudiexchange.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "markets",
+        "tasi",
+        "companies",
+        "ipo"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:saudiexchange.sa السعودية تداول سوق الأسهم الشركات"
+        },
+        {
+          "type": "website",
+          "url": "https://www.saudiexchange.sa/wps/portal/tadawulgroup/media/pressreleases"
+        }
+      ]
+    },
+
+    {
+      "name": "وزارة الاستثمار السعودية",
+      "url": "https://misa.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "investment",
+        "foreign_investment",
+        "companies",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:misa.gov.sa السعودية الاستثمار وزارة الاستثمار"
+        },
+        {
+          "type": "website",
+          "url": "https://misa.gov.sa/"
+        }
+      ]
+    },
+
+    {
+      "name": "هيئة الزكاة والضريبة والجمارك",
+      "url": "https://zatca.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "tax",
+        "customs",
+        "trade",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:zatca.gov.sa السعودية الزكاة الضريبة الجمارك"
+        },
+        {
+          "type": "website",
+          "url": "https://zatca.gov.sa/"
+        }
+      ]
+    },
+
+    {
+      "name": "وزارة الطاقة السعودية",
+      "url": "https://www.moenergy.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "oil",
+        "energy",
+        "opec",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:moenergy.gov.sa السعودية النفط الطاقة أوبك"
+        },
+        {
+          "type": "website",
+          "url": "https://www.moenergy.gov.sa/"
+        }
+      ]
+    }
   ]
 }
