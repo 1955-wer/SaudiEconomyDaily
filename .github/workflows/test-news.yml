@@ -1,44 +1,31 @@
 name: Saudi Economy Daily
 
 on:
-
   workflow_dispatch:
 
   schedule:
-
-    # 07:00 Riyadh
-    - cron: "0 7 * * *"
+    # Riyadh time
+    - cron: "7 7 * * *"
       timezone: "Asia/Riyadh"
 
-    # 11:00 Riyadh
-    - cron: "0 11 * * *"
+    - cron: "17 11 * * *"
       timezone: "Asia/Riyadh"
 
-    # 15:00 Riyadh
-    - cron: "0 15 * * *"
+    - cron: "27 15 * * *"
       timezone: "Asia/Riyadh"
 
-    # 19:00 Riyadh
-    - cron: "0 19 * * *"
+    - cron: "37 19 * * *"
       timezone: "Asia/Riyadh"
 
-    # 23:00 Riyadh
-    - cron: "0 23 * * *"
+    - cron: "47 23 * * *"
       timezone: "Asia/Riyadh"
 
-
-# السماح للـ workflow بتحديث ملف الحالة
 permissions:
   contents: write
 
-
-# منع تشغيل نسختين في نفس الوقت
 concurrency:
-
   group: saudi-economy-daily
-
   cancel-in-progress: false
-
 
 jobs:
 
@@ -48,77 +35,39 @@ jobs:
 
     steps:
 
-      # ======================================================
-      # Checkout
-      # ======================================================
-
       - name: Checkout
         uses: actions/checkout@v4
-
         with:
           fetch-depth: 0
 
-
-      # ======================================================
-      # Python
-      # ======================================================
-
       - name: Setup Python
         uses: actions/setup-python@v5
-
         with:
           python-version: "3.12"
-
-
-      # ======================================================
-      # Dependencies
-      # ======================================================
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install feedparser requests beautifulsoup4
 
-
-      # ======================================================
-      # Run Saudi Economy Daily
-      # ======================================================
-
       - name: Fetch and analyze news
         env:
-
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-
         run: |
-
           python src/fetch_news.py
-
-
-      # ======================================================
-      # Save processed news state
-      # ======================================================
 
       - name: Save processed state
         run: |
-
           git config user.name "github-actions[bot]"
-
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add data/processed_articles.json
 
           if git diff --cached --quiet; then
-
             echo "No state changes to commit."
-
           else
-
             git commit -m "chore: update processed news state"
-
             git push
-
           fi
