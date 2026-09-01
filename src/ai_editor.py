@@ -5,7 +5,7 @@ import requests
 
 
 # ============================================================
-# OpenRouter
+# OpenRouter Configuration
 # ============================================================
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -14,7 +14,7 @@ API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 MODEL = "inclusionai/ling-3.0-flash-fin:free"
 
-MAX_RETRIES = 3
+MAX_RETRIES = 2
 
 
 # ============================================================
@@ -24,128 +24,44 @@ MAX_RETRIES = 3
 SYSTEM_PROMPT = """
 أنت رئيس تحرير اقتصادي متخصص في الاقتصاد السعودي.
 
-تعمل لصالح قناة إخبارية اسمها:
+تعمل لصالح قناة:
 Saudi Economy Daily
 
-مهمتك ليست فقط تلخيص الخبر، بل تقييم أهميته الاقتصادية وتحديد هل
-يستحق النشر أم لا.
+مهمتك تحليل مجموعة من الأخبار وتحديد:
+1. هل الخبر اقتصادي ومهم للسعودية؟
+2. هل يستحق النشر؟
+3. ما درجة أهميته؟
+4. ما درجة الثقة في التحليل؟
+5. ما القطاع؟
+6. ما الأثر المحتمل؟
+7. ما الجهات المتأثرة؟
+8. ما أهم الحقائق والأرقام؟
+9. لماذا يهم الخبر؟
 
-============================================================
-أولاً: ما الذي يعتبر خبراً مهماً؟
-============================================================
+قواعد التحرير:
 
-ركز على الأخبار التي قد تؤثر على:
+- لا تخترع أي معلومة.
+- لا تخترع أي رقم.
+- لا تغير الأرقام.
+- لا تستخدم معلومات خارج النص المقدم.
+- إذا كان الخبر صفحة معلومات، سعر سهم، شاشة تداول، ملف شركة، أو قائمة عامة، لا تنشره.
+- إذا كان الخبر غير متعلق بالاقتصاد السعودي أو أثره على السعودية ضعيفاً، لا تنشره.
+- لا تعتبر مجرد ذكر السعودية سبباً كافياً للنشر.
+- لا تبالغ في التأثير.
+- استخدم العربية الفصحى الواضحة.
+- اجعل العنوان مختصراً.
+- اجعل الملخص دقيقاً ومفيداً.
+- لا تستخدم لغة تسويقية أو مبالغات.
 
-- الاقتصاد السعودي
-- الناتج المحلي
-- النمو الاقتصادي
-- النفط والطاقة
-- أرامكو
-- أوبك+
-- أسعار النفط
-- البنوك
-- أسعار الفائدة
-- السيولة
-- التضخم
-- سوق الأسهم السعودي
-- تاسي
-- الشركات المدرجة
-- الأرباح والنتائج المالية
-- الصفقات والاستحواذات
-- الاستثمارات
-- الاستثمار الأجنبي
-- صندوق الاستثمارات العامة
-- المشاريع الكبرى
-- رؤية السعودية 2030
-- الميزانية
-- الدين الحكومي
-- الصكوك والسندات
-- التجارة
-- الصادرات والواردات
-- العقارات
-- السياحة
-- الصناعة
-- التعدين
-- اللوجستيات
-- البنية التحتية
-- سوق العمل
-- التوطين
-- التقنية والاقتصاد الرقمي
-- القرارات والأنظمة ذات الأثر الاقتصادي
+معايير الأهمية:
 
-============================================================
-ثانياً: ما الذي يجب تجاهله؟
-============================================================
+0-49   غير مهم
+50-69  منخفض
+70-84  مهم
+85-94  مهم جداً
+95-100 عاجل / شديد الأهمية
 
-اجعل publish=false إذا كان المحتوى:
-
-- مجرد صفحة معلومات لشركة
-- صفحة أسعار أو شاشة سوق
-- قائمة أخبار عامة بدون خبر فعلي
-- إعلاناً بسيطاً لا يحمل أثراً اقتصادياً مهماً
-- خبراً اجتماعياً أو رياضياً أو ثقافياً
-- خبراً تقنياً بلا أثر واضح على الاقتصاد السعودي
-- خبراً عن دولة أخرى دون أثر واضح على السعودية
-- خبراً مكرراً أو قديماً
-- خبراً قصيراً جداً أو ناقص المعلومات
-- عنواناً مضللاً أو لا يحتوي مادة إخبارية واضحة
-
-============================================================
-ثالثاً: قواعد الدقة
-============================================================
-
-1. لا تخترع أي معلومة.
-2. لا تخترع أي رقم.
-3. لا تغير الأرقام.
-4. لا تستخدم معلومات من خارج الخبر.
-5. لا تستخدم معرفتك السابقة لإكمال البيانات.
-6. إذا لم يذكر الخبر معلومة، اعتبرها غير معروفة.
-7. إذا كان النص ضعيفاً، خفض الثقة.
-8. إذا لم يكن الخبر متعلقاً بالاقتصاد السعودي بدرجة كافية، لا تنشره.
-9. لا تبالغ في التأثير.
-10. لا تستخدم لغة تسويقية.
-11. لا تعتبر مجرد ذكر السعودية سبباً كافياً للنشر.
-
-============================================================
-رابعاً: الأهمية
-============================================================
-
-0-49:
-غير مهم
-
-50-69:
-منخفض
-
-70-84:
-مهم
-
-85-94:
-مهم جداً
-
-95-100:
-عاجل / شديد الأهمية
-
-============================================================
-خامساً: طريقة التفكير
-============================================================
-
-قيّم:
-
-1. حجم الأثر الاقتصادي.
-2. عدد الجهات أو الشركات المتأثرة.
-3. هل توجد أرقام أو نتائج مالية؟
-4. هل القرار حكومي أو تنظيمي؟
-5. هل الخبر يتعلق بالنفط أو البنوك أو السوق؟
-6. هل الخبر متعلق بمشروع أو استثمار كبير؟
-7. هل التأثير قصير الأجل أم طويل الأجل؟
-8. هل الخبر جديد؟
-9. هل الخبر يستحق انتباه المستثمر أو القارئ الاقتصادي؟
-
-============================================================
-سادساً: التصنيفات
-============================================================
-
-استخدم واحداً فقط:
+التصنيفات المسموحة فقط:
 
 oil
 markets
@@ -163,11 +79,7 @@ transport
 economy
 other
 
-============================================================
-سابعاً: تحليل التأثير
-============================================================
-
-market_impact يجب أن يكون أحد:
+market_impact المسموح:
 
 positive
 negative
@@ -175,55 +87,64 @@ neutral
 mixed
 unknown
 
-============================================================
-ثامناً: القرار
-============================================================
+publish=true فقط عندما يكون الخبر ذا قيمة حقيقية لقارئ اقتصادي يهتم بالسعودية.
 
-publish=true فقط إذا كان الخبر يستحق فعلاً الظهور في قناة
-اقتصادية سعودية.
+أعد JSON صحيحاً فقط، بدون Markdown وبدون أي نص خارج JSON.
 
-لا تجعل كل الأخبار publish=true.
-
-============================================================
-التنسيق
-============================================================
-
-أعد JSON فقط.
-
-لا تكتب Markdown.
-
-لا تكتب مقدمة.
-
-لا تكتب ```json.
-
-استخدم هذا الشكل:
+الإجابة يجب أن تكون كائن JSON بهذا الشكل:
 
 {
-  "publish": true,
-  "importance": 87,
-  "confidence": 92,
-  "category": "investment",
-  "market_impact": "positive",
-  "headline": "عنوان مختصر وواضح",
-  "summary": "ملخص دقيق ومختصر",
-  "why_it_matters": "سبب أهمية الخبر اقتصادياً",
-  "affected_entities": [
-    "اسم شركة أو جهة"
-  ],
-  "key_facts": [
-    "معلومة مهمة",
-    "رقم مهم"
+  "results": [
+    {
+      "id": "رقم الخبر",
+      "publish": true,
+      "importance": 87,
+      "confidence": 92,
+      "category": "investment",
+      "market_impact": "positive",
+      "headline": "عنوان مختصر",
+      "summary": "ملخص دقيق",
+      "why_it_matters": "لماذا يهم",
+      "affected_entities": ["اسم جهة أو شركة"],
+      "key_facts": ["معلومة مهمة", "رقم مهم"]
+    }
   ]
 }
 """
 
 
+ALLOWED_CATEGORIES = {
+    "oil",
+    "markets",
+    "banks",
+    "companies",
+    "investment",
+    "government",
+    "real_estate",
+    "employment",
+    "technology",
+    "tourism",
+    "industry",
+    "mining",
+    "transport",
+    "economy",
+    "other",
+}
+
+ALLOWED_IMPACTS = {
+    "positive",
+    "negative",
+    "neutral",
+    "mixed",
+    "unknown",
+}
+
+
 # ============================================================
-# Clean JSON
+# JSON Helpers
 # ============================================================
 
 def clean_json_text(text):
-
     if not text:
         return ""
 
@@ -231,10 +152,8 @@ def clean_json_text(text):
 
     if text.startswith("```json"):
         text = text[7:]
-
     elif text.startswith("```JSON"):
         text = text[7:]
-
     elif text.startswith("```"):
         text = text[3:]
 
@@ -252,113 +171,50 @@ def clean_json_text(text):
     return text.strip()
 
 
-# ============================================================
-# Validate result
-# ============================================================
-
-def validate_result(result):
-
-    if not isinstance(result, dict):
+def normalize_result(item, article_id):
+    if not isinstance(item, dict):
         return None
 
-    publish = result.get("publish", False)
-
+    publish = item.get("publish", False)
     if not isinstance(publish, bool):
         publish = False
 
     try:
-        importance = int(result.get("importance", 0))
+        importance = int(item.get("importance", 0))
     except Exception:
         importance = 0
-
     importance = max(0, min(100, importance))
 
     try:
-        confidence = int(result.get("confidence", 0))
+        confidence = int(item.get("confidence", 0))
     except Exception:
         confidence = 0
-
     confidence = max(0, min(100, confidence))
 
-    allowed_categories = {
-        "oil",
-        "markets",
-        "banks",
-        "companies",
-        "investment",
-        "government",
-        "real_estate",
-        "employment",
-        "technology",
-        "tourism",
-        "industry",
-        "mining",
-        "transport",
-        "economy",
-        "other"
-    }
-
-    category = result.get("category", "other")
-
-    if category not in allowed_categories:
+    category = item.get("category", "other")
+    if category not in ALLOWED_CATEGORIES:
         category = "other"
 
-    allowed_impacts = {
-        "positive",
-        "negative",
-        "neutral",
-        "mixed",
-        "unknown"
-    }
-
-    market_impact = result.get(
-        "market_impact",
-        "unknown"
-    )
-
-    if market_impact not in allowed_impacts:
+    market_impact = item.get("market_impact", "unknown")
+    if market_impact not in ALLOWED_IMPACTS:
         market_impact = "unknown"
 
-    headline = str(
-        result.get("headline", "")
-    ).strip()
+    headline = str(item.get("headline", "")).strip()
+    summary = str(item.get("summary", "")).strip()
+    why = str(item.get("why_it_matters", "")).strip()
 
-    summary = str(
-        result.get("summary", "")
-    ).strip()
-
-    why_it_matters = str(
-        result.get("why_it_matters", "")
-    ).strip()
-
-    affected_entities = result.get(
-        "affected_entities",
-        []
-    )
-
-    if not isinstance(
-        affected_entities,
-        list
-    ):
+    affected_entities = item.get("affected_entities", [])
+    if not isinstance(affected_entities, list):
         affected_entities = []
-
     affected_entities = [
         str(x).strip()
         for x in affected_entities
         if str(x).strip()
     ][:8]
 
-    key_facts = result.get(
-        "key_facts",
-        []
-    )
-
-    if not isinstance(
-        key_facts,
-        list
-    ):
+    key_facts = item.get("key_facts", [])
+    if not isinstance(key_facts, list):
         key_facts = []
-
     key_facts = [
         str(x).strip()
         for x in key_facts
@@ -369,6 +225,7 @@ def validate_result(result):
         publish = False
 
     return {
+        "id": str(article_id),
         "publish": publish,
         "importance": importance,
         "confidence": confidence,
@@ -376,340 +233,243 @@ def validate_result(result):
         "market_impact": market_impact,
         "headline": headline,
         "summary": summary,
-        "why_it_matters": why_it_matters,
+        "why_it_matters": why,
         "affected_entities": affected_entities,
-        "key_facts": key_facts
+        "key_facts": key_facts,
     }
 
 
 # ============================================================
-# Analyze article
+# Batch Analysis
 # ============================================================
 
-def analyze_article(article):
+def analyze_articles(articles):
+    """
+    Analyze several articles in one OpenRouter request.
+    This greatly reduces API calls compared with one request per article.
+    """
 
     if not OPENROUTER_API_KEY:
+        print("ERROR: OPENROUTER_API_KEY is missing")
+        return {}
 
-        print(
-            "ERROR: OPENROUTER_API_KEY is missing"
+    if not articles:
+        return {}
+
+    prepared = []
+
+    for index, article in enumerate(articles, start=1):
+        article_id = str(article.get("id", index))
+        title = str(article.get("title", "")).strip()
+        source = str(article.get("source", "")).strip()
+        url = str(article.get("url", "")).strip()
+        content = str(article.get("content", "")).strip()
+
+        if not content:
+            content = title
+
+        prepared.append(
+            {
+                "id": article_id,
+                "title": title,
+                "source": source,
+                "url": url,
+                "content": content[:9000],
+            }
         )
 
-        return None
-
-    title = str(
-        article.get("title", "")
-    ).strip()
-
-    source = str(
-        article.get("source", "")
-    ).strip()
-
-    url = str(
-        article.get("url", "")
-    ).strip()
-
-    content = str(
-        article.get("content", "")
-    ).strip()
-
-    if not content:
-        content = title
-
-    content = content[:18000]
-
     user_prompt = f"""
-حلل الخبر التالي كمحرر اقتصادي سعودي.
+حلل كل الأخبار التالية.
 
-المصدر:
-{source}
+مهم جداً:
+- يجب أن تعيد نتيجة واحدة لكل id.
+- لا تحذف أي id.
+- لا تستخدم معلومات خارج النص.
+- لا تعتبر وجود كلمة "السعودية" وحده كافياً للنشر.
+- أعط أولوية للأخبار الاقتصادية السعودية الحقيقية.
 
-العنوان:
-{title}
+الأخبار:
 
-الرابط:
-{url}
+{json.dumps(prepared, ensure_ascii=False, indent=2)}
 
-محتوى الخبر:
-{content}
-
-لا تستخدم أي معلومة غير موجودة في النص أعلاه.
-
-ركز على الاقتصاد السعودي وعلى التأثير الفعلي للخبر.
-
-حدد:
-- هل يستحق النشر؟
-- درجة الأهمية من 100
-- درجة الثقة
-- التصنيف
-- تأثيره المحتمل على السوق
-- الجهات المتأثرة
-- أهم المعلومات والأرقام
-- سبب أهمية الخبر
-
-أعد JSON فقط.
+أعد JSON واحداً فقط:
+{{
+  "results": [
+    {{
+      "id": "نفس id",
+      "publish": false,
+      "importance": 0,
+      "confidence": 0,
+      "category": "other",
+      "market_impact": "unknown",
+      "headline": "",
+      "summary": "",
+      "why_it_matters": "",
+      "affected_entities": [],
+      "key_facts": []
+    }}
+  ]
+}}
 """
 
-
     headers = {
-        "Authorization":
-            f"Bearer {OPENROUTER_API_KEY}",
-
-        "Content-Type":
-            "application/json",
-
-        "HTTP-Referer":
-            "https://github.com/1955-wer/SaudiEconomyDaily",
-
-        "X-OpenRouter-Title":
-            "Saudi Economy Daily"
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
+        "X-OpenRouter-Title": "Saudi Economy Daily",
     }
-
 
     payload = {
-
-        "model":
-            MODEL,
-
+        "model": MODEL,
         "messages": [
-
             {
-                "role":
-                    "system",
-
-                "content":
-                    SYSTEM_PROMPT
+                "role": "system",
+                "content": SYSTEM_PROMPT,
             },
-
             {
-                "role":
-                    "user",
-
-                "content":
-                    user_prompt
-            }
+                "role": "user",
+                "content": user_prompt,
+            },
         ],
-
-        "temperature":
-            0.1,
-
-        "max_tokens":
-            1200
+        "temperature": 0.1,
+        "max_tokens": 5000,
     }
 
-
-    for attempt in range(
-        1,
-        MAX_RETRIES + 1
-    ):
-
+    for attempt in range(1, MAX_RETRIES + 1):
         try:
-
-            print(
-                f"OpenRouter attempt "
-                f"{attempt}/{MAX_RETRIES}"
-            )
+            print(f"OpenRouter batch attempt {attempt}/{MAX_RETRIES}")
+            print(f"Batch size: {len(articles)} articles")
 
             response = requests.post(
-
                 API_URL,
-
                 headers=headers,
-
                 json=payload,
-
-                timeout=90
+                timeout=120,
             )
 
-            print(
-                f"OpenRouter status: "
-                f"{response.status_code}"
-            )
-
+            print(f"OpenRouter status: {response.status_code}")
 
             if response.ok:
-
                 data = response.json()
-
-                choices = data.get(
-                    "choices",
-                    []
-                )
+                choices = data.get("choices", [])
 
                 if not choices:
-
-                    print(
-                        "ERROR: "
-                        "OpenRouter returned no choices"
-                    )
-
+                    print("ERROR: OpenRouter returned no choices")
                     if attempt < MAX_RETRIES:
                         time.sleep(3)
                         continue
+                    return {}
 
-                    return None
+                content = choices[0].get("message", {}).get("content", "")
 
-
-                message = choices[0].get(
-                    "message",
-                    {}
-                )
-
-                result_text = message.get(
-                    "content",
-                    ""
-                )
-
-
-                if not result_text:
-
-                    print(
-                        "ERROR: "
-                        "AI returned empty content"
-                    )
-
+                if not content:
+                    print("ERROR: AI returned empty content")
                     if attempt < MAX_RETRIES:
                         time.sleep(3)
                         continue
+                    return {}
 
-                    return None
-
-
-                result_text = clean_json_text(
-                    result_text
-                )
-
+                content = clean_json_text(content)
 
                 try:
-
-                    result = json.loads(
-                        result_text
-                    )
-
+                    parsed = json.loads(content)
                 except json.JSONDecodeError:
-
-                    print(
-                        "ERROR: "
-                        "AI returned invalid JSON"
-                    )
-
-                    print(
-                        result_text[:3000]
-                    )
-
+                    print("ERROR: AI returned invalid JSON")
+                    print(content[:5000])
                     if attempt < MAX_RETRIES:
                         time.sleep(3)
                         continue
+                    return {}
 
-                    return None
+                raw_results = parsed.get("results", [])
 
+                if not isinstance(raw_results, list):
+                    print("ERROR: AI results is not a list")
+                    return {}
 
-                validated = validate_result(
-                    result
-                )
+                normalized = {}
 
-                if validated is None:
+                for item in raw_results:
+                    item_id = str(item.get("id", "")).strip()
 
-                    print(
-                        "ERROR: "
-                        "AI result validation failed"
-                    )
-
-                    if attempt < MAX_RETRIES:
-                        time.sleep(3)
+                    if not item_id:
                         continue
 
-                    return None
+                    result = normalize_result(item, item_id)
 
+                    if result:
+                        normalized[item_id] = result
 
-                return validated
+                # Ensure every requested article has a result.
+                # Missing results become non-publishable rather than silently passing.
+                for article in articles:
+                    aid = str(article.get("id", ""))
 
+                    if aid not in normalized:
+                        normalized[aid] = {
+                            "id": aid,
+                            "publish": False,
+                            "importance": 0,
+                            "confidence": 0,
+                            "category": "other",
+                            "market_impact": "unknown",
+                            "headline": "",
+                            "summary": "",
+                            "why_it_matters": "",
+                            "affected_entities": [],
+                            "key_facts": [],
+                        }
+
+                return normalized
 
             if response.status_code == 429:
-
-                print(
-                    "OpenRouter rate limit reached."
-                )
-
+                print("OpenRouter rate limit reached.")
                 if attempt < MAX_RETRIES:
-
-                    time.sleep(
-                        attempt * 5
-                    )
-
+                    time.sleep(attempt * 5)
                     continue
-
-                return None
-
+                return {}
 
             if response.status_code >= 500:
-
-                print(
-                    "OpenRouter server error:"
-                )
-
-                print(
-                    response.text[:2000]
-                )
+                print("OpenRouter server error:")
+                print(response.text[:3000])
 
                 if attempt < MAX_RETRIES:
-
-                    time.sleep(
-                        attempt * 5
-                    )
-
+                    time.sleep(attempt * 5)
                     continue
+                return {}
 
-                return None
-
-
-            print(
-                "OpenRouter ERROR:"
-            )
-
-            print(
-                response.text[:3000]
-            )
-
-            return None
-
+            print("OpenRouter ERROR:")
+            print(response.text[:3000])
+            return {}
 
         except requests.Timeout:
-
-            print(
-                "OpenRouter request timed out."
-            )
+            print("OpenRouter request timed out.")
 
             if attempt < MAX_RETRIES:
-
                 time.sleep(3)
-
                 continue
 
-            return None
-
+            return {}
 
         except requests.RequestException as error:
-
-            print(
-                f"OpenRouter network error: {error}"
-            )
+            print(f"OpenRouter network error: {error}")
 
             if attempt < MAX_RETRIES:
-
                 time.sleep(3)
-
                 continue
 
-            return None
-
+            return {}
 
         except Exception as error:
+            print(f"Unexpected AI error: {error}")
+            return {}
 
-            print(
-                f"Unexpected AI error: {error}"
-            )
-
-            return None
+    return {}
 
 
-    return None
+def analyze_article(article):
+    """
+    Compatibility wrapper for code that still analyzes one article.
+    """
+    results = analyze_articles([article])
+    return results.get(str(article.get("id", "")))
