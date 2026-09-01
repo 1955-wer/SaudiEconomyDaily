@@ -736,9 +736,9 @@
           "type": "google_news",
           "query": "site:businesswire.com Saudi Arabia investment"
         }
-      ]
-    }
-        {
+        ]
+    },
+    {
       "name": "الهيئة العامة للإحصاء",
       "url": "https://www.stats.gov.sa/",
       "country": "SA",
