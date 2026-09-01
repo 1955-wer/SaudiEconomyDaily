@@ -5,7 +5,7 @@ import requests
 
 
 # ============================================================
-# OpenRouter Configuration
+# OpenRouter
 # ============================================================
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -22,69 +22,130 @@ MAX_RETRIES = 3
 # ============================================================
 
 SYSTEM_PROMPT = """
-أنت محرر اقتصادي محترف ومتخصص في الاقتصاد السعودي.
+أنت رئيس تحرير اقتصادي متخصص في الاقتصاد السعودي.
 
-مهمتك تحليل الأخبار التي تصل إليك وتحديد هل تستحق النشر في قناة
-Saudi Economy Daily أم لا.
+تعمل لصالح قناة إخبارية اسمها:
+Saudi Economy Daily
 
-ركز على الأخبار التي لها تأثير حقيقي على:
+مهمتك ليست فقط تلخيص الخبر، بل تقييم أهميته الاقتصادية وتحديد هل
+يستحق النشر أم لا.
+
+============================================================
+أولاً: ما الذي يعتبر خبراً مهماً؟
+============================================================
+
+ركز على الأخبار التي قد تؤثر على:
 
 - الاقتصاد السعودي
+- الناتج المحلي
+- النمو الاقتصادي
 - النفط والطاقة
 - أرامكو
-- البنوك والقطاع المالي
+- أوبك+
+- أسعار النفط
+- البنوك
+- أسعار الفائدة
+- السيولة
+- التضخم
 - سوق الأسهم السعودي
-- الشركات السعودية
-- الاستثمار
+- تاسي
+- الشركات المدرجة
+- الأرباح والنتائج المالية
+- الصفقات والاستحواذات
+- الاستثمارات
+- الاستثمار الأجنبي
+- صندوق الاستثمارات العامة
 - المشاريع الكبرى
 - رؤية السعودية 2030
-- الميزانية السعودية
-- التضخم
-- أسعار الفائدة
+- الميزانية
+- الدين الحكومي
+- الصكوك والسندات
 - التجارة
+- الصادرات والواردات
 - العقارات
-- الوظائف وسوق العمل
-- الأنظمة والقرارات الاقتصادية
-- الناتج المحلي
 - السياحة
 - الصناعة
 - التعدين
-- النقل والبنية التحتية
-- الاستثمارات الأجنبية
+- اللوجستيات
+- البنية التحتية
+- سوق العمل
+- التوطين
+- التقنية والاقتصاد الرقمي
+- القرارات والأنظمة ذات الأثر الاقتصادي
 
-تجاهل الأخبار الصغيرة أو العامة التي لا تحمل أهمية اقتصادية حقيقية.
+============================================================
+ثانياً: ما الذي يجب تجاهله؟
+============================================================
 
-قواعد مهمة:
+اجعل publish=false إذا كان المحتوى:
+
+- مجرد صفحة معلومات لشركة
+- صفحة أسعار أو شاشة سوق
+- قائمة أخبار عامة بدون خبر فعلي
+- إعلاناً بسيطاً لا يحمل أثراً اقتصادياً مهماً
+- خبراً اجتماعياً أو رياضياً أو ثقافياً
+- خبراً تقنياً بلا أثر واضح على الاقتصاد السعودي
+- خبراً عن دولة أخرى دون أثر واضح على السعودية
+- خبراً مكرراً أو قديماً
+- خبراً قصيراً جداً أو ناقص المعلومات
+- عنواناً مضللاً أو لا يحتوي مادة إخبارية واضحة
+
+============================================================
+ثالثاً: قواعد الدقة
+============================================================
 
 1. لا تخترع أي معلومة.
 2. لا تخترع أي رقم.
-3. لا تغير الأرقام الموجودة في الخبر.
-4. لا تضف معلومات من معرفتك السابقة.
-5. استخدم المعلومات الموجودة في الخبر فقط.
-6. إذا كانت المعلومة غير موجودة، لا تذكرها.
-7. إذا كان الخبر غير واضح أو ناقصاً، اجعل publish=false.
-8. إذا كان الخبر مجرد إعلان عادي أو خبر غير اقتصادي، اجعل publish=false.
-9. لا تعتبر كل خبر عن السعودية خبراً اقتصادياً.
-10. الأهمية يجب أن تعكس التأثير الاقتصادي الحقيقي.
-11. اكتب بالعربية الفصحى الواضحة.
-12. اجعل الملخص مختصراً ومفيداً.
-13. لا تستخدم مبالغات غير موجودة في الخبر.
+3. لا تغير الأرقام.
+4. لا تستخدم معلومات من خارج الخبر.
+5. لا تستخدم معرفتك السابقة لإكمال البيانات.
+6. إذا لم يذكر الخبر معلومة، اعتبرها غير معروفة.
+7. إذا كان النص ضعيفاً، خفض الثقة.
+8. إذا لم يكن الخبر متعلقاً بالاقتصاد السعودي بدرجة كافية، لا تنشره.
+9. لا تبالغ في التأثير.
+10. لا تستخدم لغة تسويقية.
+11. لا تعتبر مجرد ذكر السعودية سبباً كافياً للنشر.
 
-درجات الأهمية:
+============================================================
+رابعاً: الأهمية
+============================================================
 
-0-49   = غير مهم
-50-69  = منخفض
-70-84  = مهم
-85-94  = مهم جداً
-95-100 = عاجل / شديد الأهمية
+0-49:
+غير مهم
 
-إذا كان الخبر يستحق النشر:
-publish=true
+50-69:
+منخفض
 
-إذا لم يكن يستحق النشر:
-publish=false
+70-84:
+مهم
 
-التصنيفات المسموحة:
+85-94:
+مهم جداً
+
+95-100:
+عاجل / شديد الأهمية
+
+============================================================
+خامساً: طريقة التفكير
+============================================================
+
+قيّم:
+
+1. حجم الأثر الاقتصادي.
+2. عدد الجهات أو الشركات المتأثرة.
+3. هل توجد أرقام أو نتائج مالية؟
+4. هل القرار حكومي أو تنظيمي؟
+5. هل الخبر يتعلق بالنفط أو البنوك أو السوق؟
+6. هل الخبر متعلق بمشروع أو استثمار كبير؟
+7. هل التأثير قصير الأجل أم طويل الأجل؟
+8. هل الخبر جديد؟
+9. هل الخبر يستحق انتباه المستثمر أو القارئ الاقتصادي؟
+
+============================================================
+سادساً: التصنيفات
+============================================================
+
+استخدم واحداً فقط:
 
 oil
 markets
@@ -102,35 +163,63 @@ transport
 economy
 other
 
-مهم جداً:
+============================================================
+سابعاً: تحليل التأثير
+============================================================
 
-يجب أن تكون إجابتك JSON صحيحة فقط.
+market_impact يجب أن يكون أحد:
 
-لا تكتب أي مقدمة.
-لا تكتب شرحاً خارج JSON.
-لا تستخدم Markdown.
-لا تستخدم ```json.
+positive
+negative
+neutral
+mixed
+unknown
+
+============================================================
+ثامناً: القرار
+============================================================
+
+publish=true فقط إذا كان الخبر يستحق فعلاً الظهور في قناة
+اقتصادية سعودية.
+
+لا تجعل كل الأخبار publish=true.
+
+============================================================
+التنسيق
+============================================================
+
+أعد JSON فقط.
+
+لا تكتب Markdown.
+
+لا تكتب مقدمة.
+
+لا تكتب ```json.
 
 استخدم هذا الشكل:
 
 {
   "publish": true,
-  "importance": 85,
+  "importance": 87,
+  "confidence": 92,
   "category": "investment",
+  "market_impact": "positive",
   "headline": "عنوان مختصر وواضح",
-  "summary": "ملخص الخبر في فقرة قصيرة",
-  "why_it_matters": "لماذا هذا الخبر مهم للاقتصاد السعودي",
+  "summary": "ملخص دقيق ومختصر",
+  "why_it_matters": "سبب أهمية الخبر اقتصادياً",
+  "affected_entities": [
+    "اسم شركة أو جهة"
+  ],
   "key_facts": [
     "معلومة مهمة",
-    "رقم أو معلومة مهمة",
-    "معلومة إضافية"
+    "رقم مهم"
   ]
 }
 """
 
 
 # ============================================================
-# Clean AI JSON
+# Clean JSON
 # ============================================================
 
 def clean_json_text(text):
@@ -164,7 +253,7 @@ def clean_json_text(text):
 
 
 # ============================================================
-# Validate AI result
+# Validate result
 # ============================================================
 
 def validate_result(result):
@@ -172,31 +261,24 @@ def validate_result(result):
     if not isinstance(result, dict):
         return None
 
-    publish = result.get(
-        "publish",
-        False
-    )
+    publish = result.get("publish", False)
 
     if not isinstance(publish, bool):
         publish = False
 
     try:
-        importance = int(
-            result.get(
-                "importance",
-                0
-            )
-        )
+        importance = int(result.get("importance", 0))
     except Exception:
         importance = 0
 
-    importance = max(
-        0,
-        min(
-            100,
-            importance
-        )
-    )
+    importance = max(0, min(100, importance))
+
+    try:
+        confidence = int(result.get("confidence", 0))
+    except Exception:
+        confidence = 0
+
+    confidence = max(0, min(100, confidence))
 
     allowed_categories = {
         "oil",
@@ -216,34 +298,55 @@ def validate_result(result):
         "other"
     }
 
-    category = result.get(
-        "category",
-        "other"
-    )
+    category = result.get("category", "other")
 
     if category not in allowed_categories:
         category = "other"
 
+    allowed_impacts = {
+        "positive",
+        "negative",
+        "neutral",
+        "mixed",
+        "unknown"
+    }
+
+    market_impact = result.get(
+        "market_impact",
+        "unknown"
+    )
+
+    if market_impact not in allowed_impacts:
+        market_impact = "unknown"
+
     headline = str(
-        result.get(
-            "headline",
-            ""
-        )
+        result.get("headline", "")
     ).strip()
 
     summary = str(
-        result.get(
-            "summary",
-            ""
-        )
+        result.get("summary", "")
     ).strip()
 
     why_it_matters = str(
-        result.get(
-            "why_it_matters",
-            ""
-        )
+        result.get("why_it_matters", "")
     ).strip()
+
+    affected_entities = result.get(
+        "affected_entities",
+        []
+    )
+
+    if not isinstance(
+        affected_entities,
+        list
+    ):
+        affected_entities = []
+
+    affected_entities = [
+        str(x).strip()
+        for x in affected_entities
+        if str(x).strip()
+    ][:8]
 
     key_facts = result.get(
         "key_facts",
@@ -257,32 +360,30 @@ def validate_result(result):
         key_facts = []
 
     key_facts = [
-        str(fact).strip()
-        for fact in key_facts
-        if str(fact).strip()
-    ]
+        str(x).strip()
+        for x in key_facts
+        if str(x).strip()
+    ][:5]
 
-    key_facts = key_facts[:5]
-
-    if not headline:
-        publish = False
-
-    if not summary:
+    if not headline or not summary:
         publish = False
 
     return {
         "publish": publish,
         "importance": importance,
+        "confidence": confidence,
         "category": category,
+        "market_impact": market_impact,
         "headline": headline,
         "summary": summary,
         "why_it_matters": why_it_matters,
+        "affected_entities": affected_entities,
         "key_facts": key_facts
     }
 
 
 # ============================================================
-# Analyze Article
+# Analyze article
 # ============================================================
 
 def analyze_article(article):
@@ -296,31 +397,19 @@ def analyze_article(article):
         return None
 
     title = str(
-        article.get(
-            "title",
-            ""
-        )
+        article.get("title", "")
     ).strip()
 
     source = str(
-        article.get(
-            "source",
-            ""
-        )
+        article.get("source", "")
     ).strip()
 
     url = str(
-        article.get(
-            "url",
-            ""
-        )
+        article.get("url", "")
     ).strip()
 
     content = str(
-        article.get(
-            "content",
-            ""
-        )
+        article.get("content", "")
     ).strip()
 
     if not content:
@@ -329,7 +418,7 @@ def analyze_article(article):
     content = content[:18000]
 
     user_prompt = f"""
-حلل الخبر التالي.
+حلل الخبر التالي كمحرر اقتصادي سعودي.
 
 المصدر:
 {source}
@@ -343,11 +432,19 @@ def analyze_article(article):
 محتوى الخبر:
 {content}
 
-اعتمد فقط على المعلومات الموجودة في العنوان ومحتوى الخبر.
+لا تستخدم أي معلومة غير موجودة في النص أعلاه.
 
-لا تستخدم معلومات خارجية.
+ركز على الاقتصاد السعودي وعلى التأثير الفعلي للخبر.
 
-أريد النتيجة باللغة العربية.
+حدد:
+- هل يستحق النشر؟
+- درجة الأهمية من 100
+- درجة الثقة
+- التصنيف
+- تأثيره المحتمل على السوق
+- الجهات المتأثرة
+- أهم المعلومات والأرقام
+- سبب أهمية الخبر
 
 أعد JSON فقط.
 """
@@ -396,7 +493,7 @@ def analyze_article(article):
             0.1,
 
         "max_tokens":
-            900
+            1200
     }
 
 
@@ -412,7 +509,6 @@ def analyze_article(article):
                 f"{attempt}/{MAX_RETRIES}"
             )
 
-
             response = requests.post(
 
                 API_URL,
@@ -424,16 +520,11 @@ def analyze_article(article):
                 timeout=90
             )
 
-
             print(
                 f"OpenRouter status: "
                 f"{response.status_code}"
             )
 
-
-            # ------------------------------------------------
-            # Successful response
-            # ------------------------------------------------
 
             if response.ok:
 
@@ -452,9 +543,7 @@ def analyze_article(article):
                     )
 
                     if attempt < MAX_RETRIES:
-
                         time.sleep(3)
-
                         continue
 
                     return None
@@ -479,9 +568,7 @@ def analyze_article(article):
                     )
 
                     if attempt < MAX_RETRIES:
-
                         time.sleep(3)
-
                         continue
 
                     return None
@@ -510,9 +597,7 @@ def analyze_article(article):
                     )
 
                     if attempt < MAX_RETRIES:
-
                         time.sleep(3)
-
                         continue
 
                     return None
@@ -522,7 +607,6 @@ def analyze_article(article):
                     result
                 )
 
-
                 if validated is None:
 
                     print(
@@ -531,9 +615,7 @@ def analyze_article(article):
                     )
 
                     if attempt < MAX_RETRIES:
-
                         time.sleep(3)
-
                         continue
 
                     return None
@@ -541,10 +623,6 @@ def analyze_article(article):
 
                 return validated
 
-
-            # ------------------------------------------------
-            # Rate limit
-            # ------------------------------------------------
 
             if response.status_code == 429:
 
@@ -554,25 +632,14 @@ def analyze_article(article):
 
                 if attempt < MAX_RETRIES:
 
-                    wait_time = attempt * 5
-
-                    print(
-                        f"Waiting "
-                        f"{wait_time} seconds..."
-                    )
-
                     time.sleep(
-                        wait_time
+                        attempt * 5
                     )
 
                     continue
 
                 return None
 
-
-            # ------------------------------------------------
-            # Server error
-            # ------------------------------------------------
 
             if response.status_code >= 500:
 
@@ -586,20 +653,14 @@ def analyze_article(article):
 
                 if attempt < MAX_RETRIES:
 
-                    wait_time = attempt * 5
-
                     time.sleep(
-                        wait_time
+                        attempt * 5
                     )
 
                     continue
 
                 return None
 
-
-            # ------------------------------------------------
-            # Other error
-            # ------------------------------------------------
 
             print(
                 "OpenRouter ERROR:"
@@ -630,8 +691,7 @@ def analyze_article(article):
         except requests.RequestException as error:
 
             print(
-                f"OpenRouter network error: "
-                f"{error}"
+                f"OpenRouter network error: {error}"
             )
 
             if attempt < MAX_RETRIES:
@@ -646,8 +706,7 @@ def analyze_article(article):
         except Exception as error:
 
             print(
-                f"Unexpected AI error: "
-                f"{error}"
+                f"Unexpected AI error: {error}"
             )
 
             return None
