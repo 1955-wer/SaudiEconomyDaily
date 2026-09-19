@@ -4,145 +4,86 @@ import time
 import requests
 
 
-# ============================================================
-# OpenRouter Configuration
-# ============================================================
-
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-
 MODEL = "inclusionai/ling-3.0-flash-fin:free"
 
 MAX_RETRIES = 2
 
-
-# ============================================================
-# System Prompt
-# ============================================================
-
 SYSTEM_PROMPT = """
-أنت رئيس تحرير اقتصادي متخصص في الاقتصاد السعودي.
+أنت محرر اقتصادي لقناة Saudi Economy Daily.
 
-تعمل لصالح قناة:
-Saudi Economy Daily
+حلل مجموعة أخبار ومقالات وتقارير اقتصادية عن السعودية أو ذات أثر مباشر عليها.
+لا تكتب تحليلاً طويلاً. الهدف هو اختيار محتوى جيد للنشر المختصر في Telegram.
 
-مهمتك تحليل مجموعة من الأخبار وتحديد:
-1. هل الخبر اقتصادي ومهم للسعودية؟
-2. هل يستحق النشر؟
-3. ما درجة أهميته؟
-4. ما درجة الثقة في التحليل؟
-5. ما القطاع؟
-6. ما الأثر المحتمل؟
-7. ما الجهات المتأثرة؟
-8. ما أهم الحقائق والأرقام؟
-9. لماذا يهم الخبر؟
+لكل عنصر:
+- حدد نوع المحتوى: news أو analysis أو report أو data.
+- قرر هل يستحق النشر.
+- أعطه درجة أهمية من 0 إلى 100.
+- أعطه درجة ثقة من 0 إلى 100.
+- لخصه في جملتين كحد أقصى.
+- اذكر لماذا يهم في جملة واحدة.
+- استخرج أهم 2 معلومتين فقط عند توفرهما.
+- اذكر الجهات أو الشركات المتأثرة عند وضوحها.
+- لا تخترع أي رقم أو معلومة.
+- لا تستخدم معلومات خارج النص.
+- لا تعتبر مجرد ذكر السعودية سبباً للنشر.
+- تجاهل صفحات معلومات الشركات، لوحات الأسعار، القوائم العامة، الأخبار غير الاقتصادية، والمحتوى المكرر.
 
-قواعد التحرير:
+نشر الخبر أو المقال:
+publish=true عندما تكون له قيمة حقيقية لقارئ مهتم بالاقتصاد السعودي.
 
-- لا تخترع أي معلومة.
-- لا تخترع أي رقم.
-- لا تغير الأرقام.
-- لا تستخدم معلومات خارج النص المقدم.
-- إذا كان الخبر صفحة معلومات، سعر سهم، شاشة تداول، ملف شركة، أو قائمة عامة، لا تنشره.
-- إذا كان الخبر غير متعلق بالاقتصاد السعودي أو أثره على السعودية ضعيفاً، لا تنشره.
-- لا تعتبر مجرد ذكر السعودية سبباً كافياً للنشر.
-- لا تبالغ في التأثير.
-- استخدم العربية الفصحى الواضحة.
-- اجعل العنوان مختصراً.
-- اجعل الملخص دقيقاً ومفيداً.
-- لا تستخدم لغة تسويقية أو مبالغات.
+الأهمية:
+0-49 غير مهم
+50-69 منخفض
+70-84 مهم
+85-94 مهم جداً
+95-100 عاجل جداً
 
-معايير الأهمية:
+التصنيفات:
+oil, markets, banks, companies, investment, government,
+real_estate, employment, technology, tourism, industry, mining,
+transport, economy, other
 
-0-49   غير مهم
-50-69  منخفض
-70-84  مهم
-85-94  مهم جداً
-95-100 عاجل / شديد الأهمية
+market_impact:
+positive, negative, neutral, mixed, unknown
 
-التصنيفات المسموحة فقط:
-
-oil
-markets
-banks
-companies
-investment
-government
-real_estate
-employment
-technology
-tourism
-industry
-mining
-transport
-economy
-other
-
-market_impact المسموح:
-
-positive
-negative
-neutral
-mixed
-unknown
-
-publish=true فقط عندما يكون الخبر ذا قيمة حقيقية لقارئ اقتصادي يهتم بالسعودية.
-
-أعد JSON صحيحاً فقط، بدون Markdown وبدون أي نص خارج JSON.
-
-الإجابة يجب أن تكون كائن JSON بهذا الشكل:
+أعد JSON فقط بالشكل:
 
 {
   "results": [
     {
-      "id": "رقم الخبر",
+      "id": "id",
       "publish": true,
-      "importance": 87,
-      "confidence": 92,
+      "importance": 82,
+      "confidence": 90,
+      "content_type": "analysis",
       "category": "investment",
-      "market_impact": "positive",
+      "market_impact": "neutral",
       "headline": "عنوان مختصر",
-      "summary": "ملخص دقيق",
-      "why_it_matters": "لماذا يهم",
-      "affected_entities": ["اسم جهة أو شركة"],
+      "summary": "ملخص مختصر في جملتين كحد أقصى.",
+      "why_it_matters": "جملة واحدة عن الأهمية.",
+      "affected_entities": ["جهة أو شركة"],
       "key_facts": ["معلومة مهمة", "رقم مهم"]
     }
   ]
 }
 """
 
-
 ALLOWED_CATEGORIES = {
-    "oil",
-    "markets",
-    "banks",
-    "companies",
-    "investment",
-    "government",
-    "real_estate",
-    "employment",
-    "technology",
-    "tourism",
-    "industry",
-    "mining",
-    "transport",
-    "economy",
-    "other",
+    "oil", "markets", "banks", "companies", "investment",
+    "government", "real_estate", "employment", "technology",
+    "tourism", "industry", "mining", "transport", "economy", "other"
 }
 
 ALLOWED_IMPACTS = {
-    "positive",
-    "negative",
-    "neutral",
-    "mixed",
-    "unknown",
+    "positive", "negative", "neutral", "mixed", "unknown"
 }
 
+ALLOWED_TYPES = {
+    "news", "analysis", "report", "data"
+}
 
-# ============================================================
-# JSON Helpers
-# ============================================================
 
 def clean_json_text(text):
     if not text:
@@ -171,8 +112,12 @@ def clean_json_text(text):
     return text.strip()
 
 
-def normalize_result(item, article_id):
+def normalize_result(item):
     if not isinstance(item, dict):
+        return None
+
+    article_id = str(item.get("id", "")).strip()
+    if not article_id:
         return None
 
     publish = item.get("publish", False)
@@ -183,72 +128,71 @@ def normalize_result(item, article_id):
         importance = int(item.get("importance", 0))
     except Exception:
         importance = 0
-    importance = max(0, min(100, importance))
 
     try:
         confidence = int(item.get("confidence", 0))
     except Exception:
         confidence = 0
+
+    importance = max(0, min(100, importance))
     confidence = max(0, min(100, confidence))
+
+    content_type = item.get("content_type", "news")
+    if content_type not in ALLOWED_TYPES:
+        content_type = "news"
 
     category = item.get("category", "other")
     if category not in ALLOWED_CATEGORIES:
         category = "other"
 
-    market_impact = item.get("market_impact", "unknown")
-    if market_impact not in ALLOWED_IMPACTS:
-        market_impact = "unknown"
+    impact = item.get("market_impact", "unknown")
+    if impact not in ALLOWED_IMPACTS:
+        impact = "unknown"
 
     headline = str(item.get("headline", "")).strip()
     summary = str(item.get("summary", "")).strip()
     why = str(item.get("why_it_matters", "")).strip()
 
-    affected_entities = item.get("affected_entities", [])
-    if not isinstance(affected_entities, list):
-        affected_entities = []
-    affected_entities = [
-        str(x).strip()
-        for x in affected_entities
-        if str(x).strip()
-    ][:8]
+    entities = item.get("affected_entities", [])
+    if not isinstance(entities, list):
+        entities = []
 
-    key_facts = item.get("key_facts", [])
-    if not isinstance(key_facts, list):
-        key_facts = []
-    key_facts = [
+    facts = item.get("key_facts", [])
+    if not isinstance(facts, list):
+        facts = []
+
+    entities = [
         str(x).strip()
-        for x in key_facts
+        for x in entities
         if str(x).strip()
     ][:5]
+
+    facts = [
+        str(x).strip()
+        for x in facts
+        if str(x).strip()
+    ][:2]
 
     if not headline or not summary:
         publish = False
 
     return {
-        "id": str(article_id),
+        "id": article_id,
         "publish": publish,
         "importance": importance,
         "confidence": confidence,
+        "content_type": content_type,
         "category": category,
-        "market_impact": market_impact,
+        "market_impact": impact,
         "headline": headline,
         "summary": summary,
         "why_it_matters": why,
-        "affected_entities": affected_entities,
-        "key_facts": key_facts,
+        "affected_entities": entities,
+        "key_facts": facts,
     }
 
 
-# ============================================================
-# Batch Analysis
-# ============================================================
-
 def analyze_articles(articles):
-    """
-    Analyze several articles in one OpenRouter request.
-    This greatly reduces API calls compared with one request per article.
-    """
-
     if not OPENROUTER_API_KEY:
         print("ERROR: OPENROUTER_API_KEY is missing")
         return {}
@@ -258,58 +202,25 @@ def analyze_articles(articles):
 
     prepared = []
 
-    for index, article in enumerate(articles, start=1):
-        article_id = str(article.get("id", index))
-        title = str(article.get("title", "")).strip()
-        source = str(article.get("source", "")).strip()
-        url = str(article.get("url", "")).strip()
-        content = str(article.get("content", "")).strip()
-
-        if not content:
-            content = title
-
-        prepared.append(
-            {
-                "id": article_id,
-                "title": title,
-                "source": source,
-                "url": url,
-                "content": content[:9000],
-            }
-        )
+    for article in articles:
+        prepared.append({
+            "id": str(article.get("id", "")),
+            "title": str(article.get("title", ""))[:500],
+            "source": str(article.get("source", ""))[:150],
+            "source_type": str(article.get("source_type", ""))[:100],
+            "default_content_type": str(article.get("default_content_type", "news")),
+            "url": str(article.get("url", "")),
+            "content": str(article.get("content", ""))[:7000],
+        })
 
     user_prompt = f"""
-حلل كل الأخبار التالية.
+حلل العناصر التالية واختر منها ما يصلح لنشرة اقتصادية مختصرة.
+لا تكتب مقالة طويلة. نريد ملخصاً سريعاً ودقيقاً لكل عنصر.
 
-مهم جداً:
-- يجب أن تعيد نتيجة واحدة لكل id.
-- لا تحذف أي id.
-- لا تستخدم معلومات خارج النص.
-- لا تعتبر وجود كلمة "السعودية" وحده كافياً للنشر.
-- أعط أولوية للأخبار الاقتصادية السعودية الحقيقية.
-
-الأخبار:
-
+العناصر:
 {json.dumps(prepared, ensure_ascii=False, indent=2)}
 
-أعد JSON واحداً فقط:
-{{
-  "results": [
-    {{
-      "id": "نفس id",
-      "publish": false,
-      "importance": 0,
-      "confidence": 0,
-      "category": "other",
-      "market_impact": "unknown",
-      "headline": "",
-      "summary": "",
-      "why_it_matters": "",
-      "affected_entities": [],
-      "key_facts": []
-    }}
-  ]
-}}
+أعد نتيجة لكل id موجود.
 """
 
     headers = {
@@ -322,23 +233,17 @@ def analyze_articles(articles):
     payload = {
         "model": MODEL,
         "messages": [
-            {
-                "role": "system",
-                "content": SYSTEM_PROMPT,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.1,
-        "max_tokens": 5000,
+        "max_tokens": 4200,
     }
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            print(f"OpenRouter batch attempt {attempt}/{MAX_RETRIES}")
-            print(f"Batch size: {len(articles)} articles")
+            print(f"OpenRouter attempt {attempt}/{MAX_RETRIES}")
+            print(f"Batch size: {len(articles)}")
 
             response = requests.post(
                 API_URL,
@@ -360,67 +265,29 @@ def analyze_articles(articles):
                         continue
                     return {}
 
-                content = choices[0].get("message", {}).get("content", "")
-
-                if not content:
-                    print("ERROR: AI returned empty content")
-                    if attempt < MAX_RETRIES:
-                        time.sleep(3)
-                        continue
-                    return {}
-
-                content = clean_json_text(content)
+                text = choices[0].get("message", {}).get("content", "")
+                text = clean_json_text(text)
 
                 try:
-                    parsed = json.loads(content)
+                    parsed = json.loads(text)
                 except json.JSONDecodeError:
                     print("ERROR: AI returned invalid JSON")
-                    print(content[:5000])
+                    print(text[:4000])
                     if attempt < MAX_RETRIES:
                         time.sleep(3)
                         continue
                     return {}
 
-                raw_results = parsed.get("results", [])
+                results = {}
+                raw = parsed.get("results", [])
 
-                if not isinstance(raw_results, list):
-                    print("ERROR: AI results is not a list")
-                    return {}
+                if isinstance(raw, list):
+                    for item in raw:
+                        normalized = normalize_result(item)
+                        if normalized:
+                            results[normalized["id"]] = normalized
 
-                normalized = {}
-
-                for item in raw_results:
-                    item_id = str(item.get("id", "")).strip()
-
-                    if not item_id:
-                        continue
-
-                    result = normalize_result(item, item_id)
-
-                    if result:
-                        normalized[item_id] = result
-
-                # Ensure every requested article has a result.
-                # Missing results become non-publishable rather than silently passing.
-                for article in articles:
-                    aid = str(article.get("id", ""))
-
-                    if aid not in normalized:
-                        normalized[aid] = {
-                            "id": aid,
-                            "publish": False,
-                            "importance": 0,
-                            "confidence": 0,
-                            "category": "other",
-                            "market_impact": "unknown",
-                            "headline": "",
-                            "summary": "",
-                            "why_it_matters": "",
-                            "affected_entities": [],
-                            "key_facts": [],
-                        }
-
-                return normalized
+                return results
 
             if response.status_code == 429:
                 print("OpenRouter rate limit reached.")
@@ -431,8 +298,7 @@ def analyze_articles(articles):
 
             if response.status_code >= 500:
                 print("OpenRouter server error:")
-                print(response.text[:3000])
-
+                print(response.text[:2000])
                 if attempt < MAX_RETRIES:
                     time.sleep(attempt * 5)
                     continue
@@ -444,20 +310,16 @@ def analyze_articles(articles):
 
         except requests.Timeout:
             print("OpenRouter request timed out.")
-
             if attempt < MAX_RETRIES:
                 time.sleep(3)
                 continue
-
             return {}
 
         except requests.RequestException as error:
             print(f"OpenRouter network error: {error}")
-
             if attempt < MAX_RETRIES:
                 time.sleep(3)
                 continue
-
             return {}
 
         except Exception as error:
@@ -468,8 +330,5 @@ def analyze_articles(articles):
 
 
 def analyze_article(article):
-    """
-    Compatibility wrapper for code that still analyzes one article.
-    """
     results = analyze_articles([article])
     return results.get(str(article.get("id", "")))
