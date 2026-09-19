@@ -1,0 +1,1470 @@
+{
+  "version": 2,
+  "settings": {
+    "default_language": "ar",
+    "default_country": "SA",
+    "enable_google_news_fallback": true,
+    "enable_website_fallback": true,
+    "max_articles_per_source": 20,
+    "deduplicate": true
+  },
+  "sources": [
+    {
+      "name": "وكالة الأنباء السعودية (واس)",
+      "url": "https://www.spa.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "energy",
+        "investment",
+        "markets"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.spa.gov.sa/ar/economy"
+        },
+        {
+          "type": "google_news",
+          "query": "site:spa.gov.sa السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "صحيفة الاقتصادية",
+      "url": "https://www.aleqt.com/",
+      "country": "SA",
+      "type": "economic_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "companies",
+        "investment",
+        "oil"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.aleqt.com/rss"
+        },
+        {
+          "type": "google_news",
+          "query": "site:aleqt.com السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://www.aleqt.com/"
+        }
+      ]
+    },
+    {
+      "name": "أرقام",
+      "url": "https://www.argaam.com/",
+      "country": "SA",
+      "type": "economic_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "markets",
+        "companies",
+        "saudi_economy",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:argaam.com السعودية اقتصاد شركات تداول"
+        },
+        {
+          "type": "website",
+          "url": "https://www.argaam.com/ar"
+        }
+      ]
+    },
+    {
+      "name": "أخبار 24",
+      "url": "https://akhbaar24.argaam.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "companies",
+        "markets",
+        "government"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.akhbaar24.com/rss"
+        },
+        {
+          "type": "google_news",
+          "query": "site:akhbaar24.com السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "مال",
+      "url": "https://www.maaal.com/",
+      "country": "SA",
+      "type": "economic_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "companies",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.maaal.com/feed/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:maaal.com السعودية اقتصاد شركات"
+        },
+        {
+          "type": "website",
+          "url": "https://www.maaal.com/"
+        }
+      ]
+    },
+    {
+      "name": "عكاظ",
+      "url": "https://www.okaz.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:okaz.com.sa السعودية اقتصاد أعمال"
+        },
+        {
+          "type": "website",
+          "url": "https://www.okaz.com.sa/economy"
+        }
+      ]
+    },
+    {
+      "name": "الرياض",
+      "url": "https://www.alriyadh.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.alriyadh.com/rss.xml"
+        },
+        {
+          "type": "google_news",
+          "query": "site:alriyadh.com السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "المدينة",
+      "url": "https://www.al-madina.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.al-madina.com/rssFeed/79"
+        },
+        {
+          "type": "google_news",
+          "query": "site:al-madina.com السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "سبق",
+      "url": "https://sabq.org/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:sabq.org السعودية اقتصاد أعمال"
+        },
+        {
+          "type": "website",
+          "url": "https://sabq.org/"
+        }
+      ]
+    },
+    {
+      "name": "العربية",
+      "url": "https://www.alarabiya.net/",
+      "country": "SA",
+      "type": "financial_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "oil",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:alarabiya.net السعودية اقتصاد أسواق"
+        },
+        {
+          "type": "website",
+          "url": "https://www.alarabiya.net/aswaq"
+        }
+      ]
+    },
+    {
+      "name": "عرب نيوز",
+      "url": "https://www.arabnews.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "business",
+        "oil"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.arabnews.com/rss.xml"
+        },
+        {
+          "type": "google_news",
+          "query": "site:arabnews.com Saudi Arabia economy business"
+        }
+      ]
+    },
+    {
+      "name": "الشرق",
+      "url": "https://asharq.com/",
+      "country": "AE",
+      "type": "regional_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "oil",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:asharq.com السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://asharq.com/"
+        }
+      ]
+    },
+    {
+      "name": "الشرق الأوسط",
+      "url": "https://aawsat.com/",
+      "country": "SA",
+      "type": "regional_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:aawsat.com السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://aawsat.com/"
+        }
+      ]
+    },
+    {
+      "name": "إيلاف",
+      "url": "https://elaph.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:elaph.com السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "الاقتصادي",
+      "url": "https://aliqtisadi.com/",
+      "country": "SA",
+      "type": "economic_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "companies",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://aliqtisadi.com/feed/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:aliqtisadi.com السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://aliqtisadi.com/"
+        }
+      ]
+    },
+    {
+      "name": "المواطن",
+      "url": "https://www.almowaten.net/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:almowaten.net السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://www.almowaten.net/"
+        }
+      ]
+    },
+    {
+      "name": "تواصل",
+      "url": "https://twasul.info/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "government",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://twasul.info/feed/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:twasul.info السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "رياض ديلي",
+      "url": "http://alriyadhdaily.com/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "http://alriyadhdaily.com/feed/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:alriyadhdaily.com السعودية اقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "Saudi Gazette",
+      "url": "https://saudigazette.com.sa/",
+      "country": "SA",
+      "type": "news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://saudigazette.com.sa/rssFeed/74"
+        },
+        {
+          "type": "google_news",
+          "query": "site:saudigazette.com.sa Saudi Arabia economy"
+        }
+      ]
+    },
+    {
+      "name": "وكالة أنباء الإمارات (وام)",
+      "url": "https://wam.ae/",
+      "country": "AE",
+      "type": "official",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "gulf_economy",
+        "oil",
+        "investment",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:wam.ae السعودية اقتصاد"
+        },
+        {
+          "type": "website",
+          "url": "https://www.wam.ae/ar"
+        }
+      ]
+    },
+    {
+      "name": "The National",
+      "url": "https://www.thenationalnews.com/",
+      "country": "AE",
+      "type": "regional_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "gulf_economy",
+        "oil",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:thenationalnews.com Saudi Arabia economy"
+        }
+      ]
+    },
+    {
+      "name": "Arabian Business",
+      "url": "https://www.arabianbusiness.com/",
+      "country": "AE",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment",
+        "real_estate"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:arabianbusiness.com Saudi Arabia economy"
+        },
+        {
+          "type": "website",
+          "url": "https://www.arabianbusiness.com/"
+        }
+      ]
+    },
+    {
+      "name": "Reuters",
+      "url": "https://www.reuters.com/",
+      "country": "UK",
+      "type": "international_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "oil",
+        "markets",
+        "investment",
+        "companies"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:reuters.com Saudi Arabia economy markets oil"
+        },
+        {
+          "type": "website",
+          "url": "https://www.reuters.com/world/middle-east/"
+        }
+      ]
+    },
+    {
+      "name": "Bloomberg",
+      "url": "https://www.bloomberg.com/",
+      "country": "US",
+      "type": "financial_news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "oil",
+        "investment",
+        "companies"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:bloomberg.com Saudi Arabia economy oil markets"
+        },
+        {
+          "type": "rss",
+          "url": "https://feeds.bloomberg.com/markets/news.rss"
+        }
+      ]
+    },
+    {
+      "name": "CNBC",
+      "url": "https://www.cnbc.com/",
+      "country": "US",
+      "type": "financial_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "oil",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+        },
+        {
+          "type": "google_news",
+          "query": "site:cnbc.com Saudi Arabia economy oil markets"
+        }
+      ]
+    },
+    {
+      "name": "Forbes",
+      "url": "https://www.forbes.com/",
+      "country": "US",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "business",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:forbes.com Saudi Arabia economy business"
+        }
+      ]
+    },
+    {
+      "name": "McKinsey",
+      "url": "https://www.mckinsey.com/",
+      "country": "US",
+      "type": "research",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "business",
+        "technology"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:mckinsey.com Saudi Arabia economy"
+        },
+        {
+          "type": "website",
+          "url": "https://www.mckinsey.com/featured-insights/middle-east-and-africa"
+        }
+      ]
+    },
+    {
+      "name": "MEED",
+      "url": "https://www.meed.com/",
+      "country": "UK",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "construction",
+        "infrastructure",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:meed.com Saudi Arabia projects economy"
+        },
+        {
+          "type": "website",
+          "url": "https://www.meed.com/"
+        }
+      ]
+    },
+    {
+      "name": "OilPrice",
+      "url": "https://oilprice.com/",
+      "country": "UK",
+      "type": "energy_news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "oil",
+        "energy",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://oilprice.com/rss/main"
+        },
+        {
+          "type": "google_news",
+          "query": "site:oilprice.com Saudi Arabia oil"
+        }
+      ]
+    },
+    {
+      "name": "TradeArabia",
+      "url": "http://www.tradearabia.com/",
+      "country": "BH",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "gulf_economy",
+        "business",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:tradearabia.com Saudi Arabia economy"
+        }
+      ]
+    },
+    {
+      "name": "Associated Press",
+      "url": "https://apnews.com/",
+      "country": "US",
+      "type": "international_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "oil",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:apnews.com Saudi Arabia economy oil"
+        }
+      ]
+    },
+    {
+      "name": "Al Jazeera",
+      "url": "https://www.aljazeera.net/",
+      "country": "QA",
+      "type": "regional_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "oil",
+        "gulf_economy",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:aljazeera.net السعودية اقتصاد نفط"
+        },
+        {
+          "type": "website",
+          "url": "https://www.aljazeera.net/ebusiness/"
+        }
+      ]
+    },
+    {
+      "name": "Nikkei Asia",
+      "url": "https://asia.nikkei.com/",
+      "country": "JP",
+      "type": "business_news",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "oil",
+        "global_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:asia.nikkei.com Saudi Arabia economy"
+        }
+      ]
+    },
+    {
+      "name": "وزارة المالية السعودية",
+      "url": "https://www.mof.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "budget",
+        "government",
+        "saudi_economy",
+        "debt"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.mof.gov.sa/mediacenter/news/Pages/default.aspx"
+        },
+        {
+          "type": "google_news",
+          "query": "site:mof.gov.sa السعودية وزارة المالية"
+        }
+      ]
+    },
+    {
+      "name": "البنك المركزي السعودي",
+      "url": "https://www.sama.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "monetary_policy",
+        "banks",
+        "inflation",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.sama.gov.sa/ar-sa/News/Pages/default.aspx"
+        },
+        {
+          "type": "google_news",
+          "query": "site:sama.gov.sa السعودية البنك المركزي"
+        }
+      ]
+    },
+    {
+      "name": "المنصة الوطنية الموحدة",
+      "url": "https://www.my.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "government",
+        "regulations",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.my.gov.sa/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:my.gov.sa السعودية اقتصاد قرارات"
+        }
+      ]
+    },
+    {
+      "name": "وزارة الموارد البشرية والتنمية الاجتماعية",
+      "url": "https://hrsd.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "employment",
+        "labor",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://hrsd.gov.sa/ar/news"
+        },
+        {
+          "type": "google_news",
+          "query": "site:hrsd.gov.sa السعودية العمل التوظيف الاقتصاد"
+        }
+      ]
+    },
+    {
+      "name": "مجلس التعاون الخليجي",
+      "url": "https://www.gcc-sg.org/ar-sa",
+      "country": "GCC",
+      "type": "official",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "gulf_economy",
+        "trade",
+        "investment",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.gcc-sg.org/ar-sa"
+        },
+        {
+          "type": "google_news",
+          "query": "site:gcc-sg.org السعودية اقتصاد استثمار"
+        }
+      ]
+    },
+    {
+      "name": "Business Wire",
+      "url": "https://www.businesswire.com/",
+      "country": "US",
+      "type": "press_release",
+      "enabled": true,
+      "priority": 2,
+      "topics": [
+        "companies",
+        "investment",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://feed.businesswire.com/rss/home/?rss=G1QFDERJXkJeEFtQWg=="
+        },
+        {
+          "type": "google_news",
+          "query": "site:businesswire.com Saudi Arabia investment"
+        }
+      ]
+    },
+    {
+      "name": "الهيئة العامة للإحصاء",
+      "url": "https://www.stats.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "statistics",
+        "inflation",
+        "gdp",
+        "employment",
+        "trade"
+      ],
+      "methods": [
+        {
+          "type": "rss",
+          "url": "https://www.stats.gov.sa/en/rss/news"
+        },
+        {
+          "type": "rss",
+          "url": "https://www.stats.gov.sa/en/rss/stats"
+        },
+        {
+          "type": "google_news",
+          "query": "site:stats.gov.sa السعودية الاقتصاد إحصاءات"
+        }
+      ]
+    },
+    {
+      "name": "صندوق الاستثمارات العامة",
+      "url": "https://www.pif.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "investment",
+        "companies",
+        "saudi_economy",
+        "vision_2030"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:pif.gov.sa السعودية صندوق الاستثمارات"
+        },
+        {
+          "type": "website",
+          "url": "https://www.pif.gov.sa/en/news-and-insights/press-releases/"
+        }
+      ]
+    },
+    {
+      "name": "هيئة السوق المالية",
+      "url": "https://cma.org.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "markets",
+        "regulation",
+        "investment",
+        "capital_market"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:cma.org.sa السعودية هيئة السوق المالية"
+        },
+        {
+          "type": "website",
+          "url": "https://cma.org.sa/"
+        }
+      ]
+    },
+    {
+      "name": "Saudi Exchange",
+      "url": "https://www.saudiexchange.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "markets",
+        "tasi",
+        "companies",
+        "ipo"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:saudiexchange.sa السعودية تداول سوق الأسهم الشركات"
+        },
+        {
+          "type": "website",
+          "url": "https://www.saudiexchange.sa/wps/portal/tadawulgroup/media/pressreleases"
+        }
+      ]
+    },
+    {
+      "name": "وزارة الاستثمار السعودية",
+      "url": "https://misa.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "investment",
+        "foreign_investment",
+        "companies",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:misa.gov.sa السعودية الاستثمار وزارة الاستثمار"
+        },
+        {
+          "type": "website",
+          "url": "https://misa.gov.sa/"
+        }
+      ]
+    },
+    {
+      "name": "هيئة الزكاة والضريبة والجمارك",
+      "url": "https://zatca.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "tax",
+        "customs",
+        "trade",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:zatca.gov.sa السعودية الزكاة الضريبة الجمارك"
+        },
+        {
+          "type": "website",
+          "url": "https://zatca.gov.sa/"
+        }
+      ]
+    },
+    {
+      "name": "وزارة الطاقة السعودية",
+      "url": "https://www.moenergy.gov.sa/",
+      "country": "SA",
+      "type": "official",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "oil",
+        "energy",
+        "opec",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:moenergy.gov.sa السعودية النفط الطاقة أوبك"
+        },
+        {
+          "type": "website",
+          "url": "https://www.moenergy.gov.sa/"
+        }
+      ]
+    },
+    {
+      "name": "Financial Times",
+      "url": "https://www.ft.com/",
+      "country": "UK",
+      "type": "international_financial_news",
+      "default_content_type": "news",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "investment",
+        "oil",
+        "global_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:ft.com Saudi Arabia economy investment oil markets"
+        }
+      ]
+    },
+    {
+      "name": "The Wall Street Journal",
+      "url": "https://www.wsj.com/",
+      "country": "US",
+      "type": "international_financial_news",
+      "default_content_type": "news",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "markets",
+        "investment",
+        "oil"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:wsj.com Saudi Arabia economy investment oil markets"
+        }
+      ]
+    },
+    {
+      "name": "The Economist",
+      "url": "https://www.economist.com/",
+      "country": "UK",
+      "type": "international_analysis",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "global_economy",
+        "investment",
+        "geopolitics"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:economist.com Saudi Arabia economy Vision 2030 oil"
+        }
+      ]
+    },
+    {
+      "name": "International Energy Agency",
+      "url": "https://www.iea.org/",
+      "country": "INTL",
+      "type": "energy_research",
+      "default_content_type": "report",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "oil",
+        "energy",
+        "saudi_economy",
+        "global_energy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:iea.org Saudi Arabia oil energy"
+        }
+      ]
+    },
+    {
+      "name": "OPEC",
+      "url": "https://www.opec.org/",
+      "country": "INTL",
+      "type": "energy_official",
+      "default_content_type": "data",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "oil",
+        "energy",
+        "opec",
+        "saudi_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:opec.org Saudi Arabia oil OPEC production"
+        }
+      ]
+    },
+    {
+      "name": "S&P Global",
+      "url": "https://www.spglobal.com/",
+      "country": "US",
+      "type": "financial_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "oil",
+        "markets",
+        "saudi_economy",
+        "credit"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:spglobal.com Saudi Arabia economy oil markets credit"
+        }
+      ]
+    },
+    {
+      "name": "Argus Media",
+      "url": "https://www.argusmedia.com/",
+      "country": "UK",
+      "type": "energy_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "oil",
+        "energy",
+        "saudi_economy",
+        "commodities"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:argusmedia.com Saudi Arabia oil energy"
+        }
+      ]
+    },
+    {
+      "name": "IMF",
+      "url": "https://www.imf.org/",
+      "country": "INTL",
+      "type": "international_research",
+      "default_content_type": "report",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "gdp",
+        "inflation",
+        "fiscal_policy",
+        "oil"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:imf.org Saudi Arabia economy Article IV GDP inflation"
+        }
+      ]
+    },
+    {
+      "name": "World Bank",
+      "url": "https://www.worldbank.org/",
+      "country": "INTL",
+      "type": "international_research",
+      "default_content_type": "report",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "gdp",
+        "trade",
+        "development"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:worldbank.org Saudi Arabia economy growth development"
+        }
+      ]
+    },
+    {
+      "name": "OECD",
+      "url": "https://www.oecd.org/",
+      "country": "INTL",
+      "type": "international_research",
+      "default_content_type": "report",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "gdp",
+        "inflation",
+        "labor_market"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:oecd.org Saudi Arabia economy GDP inflation"
+        }
+      ]
+    },
+    {
+      "name": "Jadwa Investment",
+      "url": "https://www.jadwa.com/",
+      "country": "SA",
+      "type": "research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "macro",
+        "oil",
+        "inflation",
+        "labor",
+        "budget"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.jadwa.com/en/economic-reports"
+        },
+        {
+          "type": "google_news",
+          "query": "site:jadwa.com Saudi Arabia economy macro inflation oil budget"
+        }
+      ]
+    },
+    {
+      "name": "KAPSARC",
+      "url": "https://www.kapsarc.org/",
+      "country": "SA",
+      "type": "research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 5,
+      "topics": [
+        "saudi_economy",
+        "energy",
+        "oil",
+        "transport",
+        "labor",
+        "research"
+      ],
+      "methods": [
+        {
+          "type": "website",
+          "url": "https://www.kapsarc.org/our-offerings/publications/"
+        },
+        {
+          "type": "google_news",
+          "query": "site:kapsarc.org Saudi Arabia economy energy oil research"
+        }
+      ]
+    },
+    {
+      "name": "PwC Middle East",
+      "url": "https://www.pwc.com/m1/en/",
+      "country": "INTL",
+      "type": "consulting_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 4,
+      "topics": [
+        "saudi_economy",
+        "diversification",
+        "investment",
+        "gcc_economy"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:pwc.com/m1 Saudi Arabia economy diversification investment GCC"
+        }
+      ]
+    },
+    {
+      "name": "Strategy& Middle East",
+      "url": "https://www.strategyand.pwc.com/m1/en/",
+      "country": "INTL",
+      "type": "consulting_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "strategy",
+        "investment",
+        "industries"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:strategyand.pwc.com Saudi Arabia economy strategy investment"
+        }
+      ]
+    },
+    {
+      "name": "Deloitte Middle East",
+      "url": "https://www.deloitte.com/middle-east/",
+      "country": "INTL",
+      "type": "consulting_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "technology",
+        "industry"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:deloitte.com Saudi Arabia economy Middle East investment"
+        }
+      ]
+    },
+    {
+      "name": "EY Middle East",
+      "url": "https://www.ey.com/en_me",
+      "country": "INTL",
+      "type": "consulting_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "investment",
+        "real_estate",
+        "business"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:ey.com Saudi Arabia economy investment Middle East"
+        }
+      ]
+    },
+    {
+      "name": "Kearney Middle East",
+      "url": "https://www.kearney.com/middle-east",
+      "country": "INTL",
+      "type": "consulting_research",
+      "default_content_type": "analysis",
+      "enabled": true,
+      "priority": 3,
+      "topics": [
+        "saudi_economy",
+        "strategy",
+        "supply_chains",
+        "investment"
+      ],
+      "methods": [
+        {
+          "type": "google_news",
+          "query": "site:kearney.com Saudi Arabia economy Middle East strategy"
+        }
+      ]
+    }
+  ]
+}
