@@ -6,17 +6,20 @@ import time
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urljoin, urlparse
+from zoneinfo import ZoneInfo
+from io import BytesIO
 
 import requests
 import feedparser
 from bs4 import BeautifulSoup
 
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
+
 from ai_editor import analyze_articles
 
-
-# ============================================================
-# Configuration
-# ============================================================
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -24,68 +27,52 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 SOURCES_FILE = "config/sources.json"
 
 STATE_DIR = "data"
-STATE_FILE = os.path.join(STATE_DIR, "processed_articles.json")
+STATE_FILE = os.path.join(
+    STATE_DIR,
+    "processed_articles.json"
+)
 
-# جمع أخبار أكثر من كل مصدر
-MAX_ARTICLES_PER_SOURCE = 12
+MAX_ARTICLES_PER_SOURCE = 10
+MAX_CANDIDATES_PER_RUN = 6
+MAX_ITEMS_PER_NEWSLETTER = 3
 
-# عدد الأخبار التي يفحصها AI في كل تشغيل
-MAX_AI_ARTICLES = 14
+# 3 newsletters × 3 items = 9 items on a normal day.
+DAILY_TARGET = 9
+DAILY_MIN = 8
+DAILY_MAX = 10
 
-# حجم الدفعة الواحدة إلى AI
-AI_BATCH_SIZE = 5
-
-# شروط النشر
-PUBLISH_THRESHOLD = 70
+PUBLISH_THRESHOLD = 68
 MIN_CONFIDENCE = 50
 
-MAX_ARTICLE_AGE_HOURS = 36
+# Each run looks mainly at the last 30 hours.
+MAX_ARTICLE_AGE_HOURS = 30
+
+# Only selected AI candidates get full article extraction.
 MAX_CONTENT_LENGTH = 18000
 
-REQUEST_TIMEOUT = 25
-
+REQUEST_TIMEOUT = 20
 STATE_RETENTION_DAYS = 30
+ANALYSIS_RETRY_HOURS = 18
 
+RIYADH = ZoneInfo("Asia/Riyadh")
 
-# ============================================================
-# Economic keywords
-# ============================================================
 
 ECONOMIC_KEYWORDS = [
     "اقتصاد", "اقتصادي", "الاقتصاد",
     "نفط", "أرامكو", "أوبك", "أوبك+",
-    "طاقة", "غاز",
-    "استثمار", "استثمارات", "استثمار أجنبي",
-    "تمويل", "بنك", "بنوك",
-    "فائدة", "تضخم", "سيولة",
+    "طاقة", "غاز", "استثمار", "استثمارات",
+    "تمويل", "بنك", "بنوك", "فائدة", "تضخم",
     "تاسي", "أسهم", "سوق الأسهم", "تداول",
-    "شركة", "شركات",
-    "أرباح", "إيرادات", "خسائر",
-    "استحواذ", "اندماج",
-    "مشروع", "مشاريع",
-    "ميزانية", "دين", "صكوك", "سندات",
-    "تجارة", "صادرات", "واردات",
-    "عقار", "عقارات",
-    "سياحة",
-    "صناعة", "تصنيع",
-    "تعدين",
-    "وظائف", "توظيف", "توطين",
-    "رؤية 2030",
-    "صندوق الاستثمارات",
-    "القطاع الخاص",
-    "ناتج محلي",
-    "نمو",
-    "مؤشر",
-    "ترخيص",
-    "تنظيم",
-    "صفقة",
-    "اكتتاب",
+    "شركة", "شركات", "أرباح", "إيرادات", "خسائر",
+    "استحواذ", "اندماج", "صفقة",
+    "مشروع", "مشاريع", "ميزانية", "دين",
+    "صكوك", "سندات", "تجارة", "صادرات", "واردات",
+    "عقار", "عقارات", "سياحة", "صناعة", "تصنيع",
+    "تعدين", "وظائف", "توظيف", "توطين",
+    "رؤية 2030", "صندوق الاستثمارات", "القطاع الخاص",
+    "ناتج محلي", "نمو", "مؤشر", "تنظيم", "اكتتاب",
+    "إنتاج", "شحن", "لوجستيات", "سلاسل الإمداد",
 ]
-
-
-# ============================================================
-# Reject obvious non-news pages
-# ============================================================
 
 REJECT_TITLE_PATTERNS = [
     "معلومات الشركة",
@@ -99,13 +86,9 @@ REJECT_TITLE_PATTERNS = [
     "Company Information",
     "Stock Information",
     "أسعار الذهب",
-    "أسعار النفط اليوم",
+    "سعر النفط اليوم",
 ]
 
-
-# ============================================================
-# Basic helpers
-# ============================================================
 
 def load_sources():
     with open(SOURCES_FILE, "r", encoding="utf-8") as f:
@@ -122,23 +105,53 @@ def load_state():
     os.makedirs(STATE_DIR, exist_ok=True)
 
     if not os.path.exists(STATE_FILE):
-        return {"processed": {}}
+        return {
+            "processed": {},
+            "published": {},
+            "daily": {
+                "date": "",
+                "count": 0,
+                "newsletter_count": 0,
+                "ids": [],
+                "content_types": [],
+            },
+        }
 
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         if not isinstance(data, dict):
-            return {"processed": {}}
+            data = {}
 
-        if not isinstance(data.get("processed"), dict):
-            data["processed"] = {}
+        data.setdefault("processed", {})
+        data.setdefault("published", {})
+        data.setdefault(
+            "daily",
+            {
+                "date": "",
+                "count": 0,
+                "newsletter_count": 0,
+                "ids": [],
+                "content_types": [],
+            },
+        )
 
         return data
 
     except Exception as error:
         print(f"WARNING: Could not load state: {error}")
-        return {"processed": {}}
+        return {
+            "processed": {},
+            "published": {},
+            "daily": {
+                "date": "",
+                "count": 0,
+                "newsletter_count": 0,
+                "ids": [],
+                "content_types": [],
+            },
+        }
 
 
 def save_state(state):
@@ -153,27 +166,43 @@ def save_state(state):
         )
 
 
+def prepare_daily_state(state):
+    today = datetime.now(RIYADH).date().isoformat()
+    daily = state.get("daily", {})
+
+    if daily.get("date") != today:
+        state["daily"] = {
+            "date": today,
+            "count": 0,
+            "newsletter_count": 0,
+            "ids": [],
+            "content_types": [],
+        }
+
+    return state
+
+
 def cleanup_state(state):
-    cutoff = (
-        datetime.now(timezone.utc)
-        - timedelta(days=STATE_RETENTION_DAYS)
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        days=STATE_RETENTION_DAYS
     )
 
-    cleaned = {}
+    for key in ("processed", "published"):
+        old = state.get(key, {})
+        cleaned = {}
 
-    for article_id, timestamp in state.get("processed", {}).items():
-        try:
-            dt = datetime.fromisoformat(
-                timestamp.replace("Z", "+00:00")
-            )
+        for article_id, timestamp in old.items():
+            try:
+                dt = datetime.fromisoformat(
+                    str(timestamp).replace("Z", "+00:00")
+                )
+                if dt >= cutoff:
+                    cleaned[article_id] = timestamp
+            except Exception:
+                continue
 
-            if dt >= cutoff:
-                cleaned[article_id] = timestamp
+        state[key] = cleaned
 
-        except Exception:
-            continue
-
-    state["processed"] = cleaned
     return state
 
 
@@ -181,17 +210,17 @@ def clean_text(text):
     if not text:
         return ""
 
-    text = str(text)
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
+    return re.sub(r"\s+", " ", str(text)).strip()
 
 
 def remove_html(text):
     if not text:
         return ""
 
-    soup = BeautifulSoup(text, "html.parser")
+    soup = BeautifulSoup(
+        text,
+        "html.parser"
+    )
 
     return clean_text(
         soup.get_text(" ")
@@ -216,47 +245,33 @@ def title_key(title):
     title = re.sub(
         r"[^\w\u0600-\u06FF\s]",
         " ",
-        title,
+        title
     )
 
-    words = title.split()
-
     stop_words = {
-        "السعودية",
-        "السعودي",
-        "اليوم",
-        "في",
-        "من",
-        "عن",
-        "على",
-        "إلى",
-        "مع",
-        "بعد",
-        "قبل",
-        "نشر",
-        "تعلن",
-        "يعلن",
+        "السعودية", "السعودي", "اليوم", "في",
+        "من", "عن", "على", "إلى", "مع", "بعد",
+        "قبل", "تعلن", "يعلن", "نشر", "وكالة",
     }
 
-    words = [
+    return " ".join(
         word
-        for word in words
+        for word in title.split()
         if word not in stop_words
-    ]
-
-    return " ".join(words)
+    )
 
 
 def contains_economic_keyword(title):
     title = title.lower()
 
-    score = 0
-
-    for keyword in ECONOMIC_KEYWORDS:
-        if keyword.lower() in title:
-            score += 1
-
-    return min(score, 12)
+    return min(
+        sum(
+            1
+            for keyword in ECONOMIC_KEYWORDS
+            if keyword.lower() in title
+        ),
+        15,
+    )
 
 
 def is_rejected_title(title):
@@ -267,10 +282,6 @@ def is_rejected_title(title):
         for pattern in REJECT_TITLE_PATTERNS
     )
 
-
-# ============================================================
-# Dates
-# ============================================================
 
 def parse_entry_date(entry):
     for field in ("published", "updated"):
@@ -314,10 +325,6 @@ def is_recent(article):
         return True
 
 
-# ============================================================
-# RSS
-# ============================================================
-
 def get_feed(url):
     try:
         print(f"    RSS: {url}")
@@ -326,17 +333,15 @@ def get_feed(url):
             url,
             request_headers={
                 "User-Agent":
-                    "Mozilla/5.0 SaudiEconomyDaily/4.0"
+                    "Mozilla/5.0 SaudiEconomyDaily/5.0"
             },
         )
 
         if not feed.entries:
-            print("    RSS: no entries")
             return []
 
         print(
-            f"    RSS entries: "
-            f"{len(feed.entries)}"
+            f"    RSS entries: {len(feed.entries)}"
         )
 
         return feed.entries
@@ -345,10 +350,6 @@ def get_feed(url):
         print(f"    RSS ERROR: {error}")
         return []
 
-
-# ============================================================
-# Website extraction
-# ============================================================
 
 def fetch_website_links(page_url, source):
     try:
@@ -367,15 +368,11 @@ def fetch_website_links(page_url, source):
         )
 
         if not response.ok:
-            print(
-                f"    Website status: "
-                f"{response.status_code}"
-            )
             return []
 
         soup = BeautifulSoup(
             response.text,
-            "html.parser",
+            "html.parser"
         )
 
         source_domain = urlparse(
@@ -398,24 +395,18 @@ def fetch_website_links(page_url, source):
 
             href = anchor.get(
                 "href",
-                "",
+                ""
             )
 
-            if len(text) < 30:
+            if len(text) < 30 or len(text) > 240:
                 continue
 
-            if len(text) > 220:
-                continue
-
-            if href.startswith("#"):
-                continue
-
-            if href.startswith("javascript:"):
+            if href.startswith(("#", "javascript:")):
                 continue
 
             absolute_url = urljoin(
                 page_url,
-                href,
+                href
             )
 
             domain = urlparse(
@@ -432,12 +423,7 @@ def fetch_website_links(page_url, source):
             if is_rejected_title(text):
                 continue
 
-            # Prefer links with economic wording.
-            economic_score = contains_economic_keyword(
-                text
-            )
-
-            if economic_score == 0 and len(results) >= 4:
+            if contains_economic_keyword(text) == 0 and len(results) >= 5:
                 continue
 
             seen.add(absolute_url)
@@ -455,52 +441,94 @@ def fetch_website_links(page_url, source):
         return results
 
     except Exception as error:
-        print(f"    Website ERROR: {error}")
+        print(
+            f"    Website ERROR: {error}"
+        )
         return []
 
 
-# ============================================================
-# Article text extraction
-# ============================================================
-
-def extract_article_text(url):
-    if not url:
+def extract_pdf_text(url):
+    if PdfReader is None:
+        print("    pypdf is not installed; cannot read PDF.")
         return ""
 
     try:
-        headers = {
-            "User-Agent":
-                "Mozilla/5.0 "
-                "(Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 "
-                "Chrome/131 Safari/537.36"
-        }
-
         response = requests.get(
             url,
-            headers=headers,
+            headers={
+                "User-Agent": "Mozilla/5.0 SaudiEconomyDaily/5.0"
+            },
             timeout=REQUEST_TIMEOUT,
         )
 
         if not response.ok:
             return ""
 
+        reader = PdfReader(
+            BytesIO(response.content)
+        )
+
+        pages = []
+
+        for page in reader.pages[:25]:
+            text = page.extract_text() or ""
+            if text:
+                pages.append(text)
+
+        return clean_text(
+            "\n".join(pages)
+        )[:MAX_CONTENT_LENGTH]
+
+    except Exception as error:
+        print(
+            f"    PDF extraction ERROR: {error}"
+        )
+        return ""
+
+
+def extract_article_text(url):
+    if not url:
+        return ""
+
+    lower_url = url.lower().split("?")[0]
+
+    if lower_url.endswith(".pdf"):
+        return extract_pdf_text(url)
+
+    try:
+        response = requests.get(
+            url,
+            headers={
+                "User-Agent":
+                    "Mozilla/5.0 "
+                    "(Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 "
+                    "Chrome/131 Safari/537.36"
+            },
+            timeout=REQUEST_TIMEOUT,
+        )
+
+        if not response.ok:
+            return ""
+
+        content_type = response.headers.get(
+            "Content-Type",
+            ""
+        ).lower()
+
+        if "application/pdf" in content_type:
+            return extract_pdf_text(url)
+
         soup = BeautifulSoup(
             response.text,
-            "html.parser",
+            "html.parser"
         )
 
         for tag in soup(
             [
-                "script",
-                "style",
-                "noscript",
-                "svg",
-                "nav",
-                "footer",
-                "header",
-                "form",
-                "aside",
+                "script", "style", "noscript", "svg",
+                "nav", "footer", "header", "form",
+                "aside"
             ]
         ):
             tag.decompose()
@@ -519,7 +547,7 @@ def extract_article_text(url):
             soup.find_all(
                 "div",
                 class_=re.compile(
-                    r"article|story|content|post|entry|body|article-body",
+                    r"article|story|content|post|entry|body|article-body|report",
                     re.I,
                 ),
             )
@@ -531,7 +559,7 @@ def extract_article_text(url):
             text = clean_text(
                 candidate.get_text(
                     " ",
-                    strip=True,
+                    strip=True
                 )
             )
 
@@ -545,7 +573,7 @@ def extract_article_text(url):
                 best_text = clean_text(
                     body.get_text(
                         " ",
-                        strip=True,
+                        strip=True
                     )
                 )
 
@@ -560,10 +588,6 @@ def extract_article_text(url):
         )
         return ""
 
-
-# ============================================================
-# Article builder
-# ============================================================
 
 def build_article(
     title,
@@ -580,30 +604,25 @@ def build_article(
     if is_rejected_title(title):
         return None
 
-    full_content = extract_article_text(url)
+    default_type = source.get(
+        "default_content_type",
+        "news"
+    )
 
-    if len(full_content) >= 200:
-        content = full_content
-    else:
-        content = remove_html(description)
-
-    if not content:
-        content = title
+    content = remove_html(
+        description
+    )
 
     return {
         "id": article_id(title, url),
         "title": title,
         "url": url,
-        "content": content,
-        "source": source.get(
-            "name",
-            "Unknown",
-        ),
+        "content": content or title,
+        "source": source.get("name", "Unknown"),
+        "source_type": source.get("type", "news"),
+        "default_content_type": default_type,
         "priority": int(
-            source.get(
-                "priority",
-                1,
-            )
+            source.get("priority", 1)
         ),
         "published_at": (
             published_at.isoformat()
@@ -617,35 +636,12 @@ def rss_articles(entries, source):
     articles = []
 
     for entry in entries:
-        title = clean_text(
-            entry.get(
-                "title",
-                "",
-            )
-        )
-
-        url = clean_text(
-            entry.get(
-                "link",
-                "",
-            )
-        )
-
-        description = entry.get(
-            "summary",
-            "",
-        )
-
-        published_at = parse_entry_date(
-            entry
-        )
-
         article = build_article(
-            title,
-            url,
-            description,
+            clean_text(entry.get("title", "")),
+            clean_text(entry.get("link", "")),
+            entry.get("summary", ""),
             source,
-            published_at,
+            parse_entry_date(entry),
         )
 
         if article and is_recent(article):
@@ -657,21 +653,11 @@ def rss_articles(entries, source):
     return articles
 
 
-# ============================================================
-# Source fetching
-# ============================================================
-
 def fetch_source(source):
-    name = source.get(
-        "name",
-        "Unknown",
-    )
+    name = source.get("name", "Unknown")
 
     methods = list(
-        source.get(
-            "methods",
-            [],
-        )
+        source.get("methods", [])
     )
 
     print("")
@@ -681,7 +667,6 @@ def fetch_source(source):
 
     all_results = []
 
-    # RSS
     for method in methods:
         if method.get("type") != "rss":
             continue
@@ -697,11 +682,10 @@ def fetch_source(source):
             all_results.extend(
                 rss_articles(
                     entries,
-                    source,
+                    source
                 )
             )
 
-    # Google News
     for method in methods:
         if method.get("type") != "google_news":
             continue
@@ -727,11 +711,10 @@ def fetch_source(source):
             all_results.extend(
                 rss_articles(
                     entries,
-                    source,
+                    source
                 )
             )
 
-    # Website
     for method in methods:
         if method.get("type") != "website":
             continue
@@ -743,7 +726,7 @@ def fetch_source(source):
 
         links = fetch_website_links(
             page_url,
-            source,
+            source
         )
 
         for link in links:
@@ -756,7 +739,9 @@ def fetch_source(source):
             )
 
             if article:
-                all_results.append(article)
+                all_results.append(
+                    article
+                )
 
     unique = {}
 
@@ -774,30 +759,28 @@ def fetch_source(source):
     return results
 
 
-# ============================================================
-# Candidate scoring
-# ============================================================
-
 def candidate_score(article):
-    score = 0
-
-    score += (
-        article.get(
-            "priority",
-            1,
-        )
-        * 10
+    score = (
+        article.get("priority", 1) * 10
     )
 
     score += (
         contains_economic_keyword(
-            article.get(
-                "title",
-                "",
-            )
-        )
-        * 4
+            article.get("title", "")
+        ) * 4
     )
+
+    content_type = article.get(
+        "default_content_type",
+        "news"
+    )
+
+    if content_type == "analysis":
+        score += 16
+    elif content_type == "report":
+        score += 14
+    elif content_type == "data":
+        score += 12
 
     published_at = article.get(
         "published_at"
@@ -808,41 +791,41 @@ def candidate_score(article):
             dt = datetime.fromisoformat(
                 published_at.replace(
                     "Z",
-                    "+00:00",
+                    "+00:00"
                 )
             )
 
             age_hours = (
-                datetime.now(timezone.utc)
-                - dt
+                datetime.now(timezone.utc) - dt
             ).total_seconds() / 3600
 
             if age_hours <= 3:
                 score += 40
             elif age_hours <= 6:
-                score += 35
+                score += 34
             elif age_hours <= 12:
-                score += 30
+                score += 28
             elif age_hours <= 24:
                 score += 20
-            elif age_hours <= 36:
+            elif age_hours <= 30:
                 score += 10
 
         except Exception:
             pass
 
+    # Strong RSS summary / content is a useful signal.
     if len(
-        article.get(
-            "content",
-            "",
-        )
-    ) >= 1000:
-        score += 10
+        article.get("content", "")
+    ) >= 600:
+        score += 8
 
     return score
 
 
-def select_ai_candidates(articles):
+def select_candidates(
+    articles,
+    target,
+):
     ordered = sorted(
         articles,
         key=candidate_score,
@@ -850,56 +833,72 @@ def select_ai_candidates(articles):
     )
 
     selected = []
-    source_counts = {}
+    sources = set()
+    types = set()
 
-    # Prefer source diversity first.
+    # First pass: source and content-type diversity.
     for article in ordered:
-        source = article.get(
-            "source",
-            "Unknown",
+        source = article.get("source", "")
+        content_type = article.get(
+            "default_content_type",
+            "news"
         )
 
-        count = source_counts.get(
-            source,
-            0,
-        )
-
-        if count >= 2:
+        if source in sources:
             continue
 
-        selected.append(article)
-        source_counts[source] = count + 1
+        if content_type not in types or len(selected) >= target - 2:
+            selected.append(article)
+            sources.add(source)
+            types.add(content_type)
 
-        if len(selected) >= MAX_AI_ARTICLES:
+        if len(selected) >= target:
             return selected
 
-    # Fill remaining slots.
+    # Second pass: fill remaining slots.
     for article in ordered:
         if article in selected:
             continue
 
         selected.append(article)
 
-        if len(selected) >= MAX_AI_ARTICLES:
+        if len(selected) >= target:
             break
 
     return selected
 
 
-# ============================================================
-# Telegram
-# ============================================================
+def enrich_articles(articles):
+    for article in articles:
+        text = extract_article_text(
+            article["url"]
+        )
+
+        if len(text) >= 250:
+            article["content"] = text
+
+        print(
+            f"    Enriched: {article['title'][:100]}"
+        )
+
+    return articles
+
+
+def newsletter_label():
+    now = datetime.now(RIYADH)
+
+    if now.hour < 11:
+        return "نشرة الصباح"
+    if now.hour < 17:
+        return "نشرة منتصف اليوم"
+
+    return "النشرة المسائية"
+
 
 def send_telegram(message):
-    if not TOKEN:
+    if not TOKEN or not CHAT_ID:
         print(
-            "ERROR: TELEGRAM_BOT_TOKEN is missing"
-        )
-        return False
-
-    if not CHAT_ID:
-        print(
-            "ERROR: TELEGRAM_CHAT_ID is missing"
+            "ERROR: Telegram credentials missing"
         )
         return False
 
@@ -925,9 +924,7 @@ def send_telegram(message):
         )
 
         if not response.ok:
-            print(
-                response.text[:2000]
-            )
+            print(response.text[:2000])
 
         return response.ok
 
@@ -938,27 +935,12 @@ def send_telegram(message):
         return False
 
 
-# ============================================================
-# Telegram message
-# ============================================================
-
-def build_message(article, ai):
-    categories = {
-        "oil": "النفط والطاقة",
-        "markets": "الأسواق",
-        "banks": "البنوك والقطاع المالي",
-        "companies": "الشركات",
-        "investment": "الاستثمار",
-        "government": "الحكومة والأنظمة",
-        "real_estate": "العقارات",
-        "employment": "سوق العمل",
-        "technology": "التقنية",
-        "tourism": "السياحة",
-        "industry": "الصناعة",
-        "mining": "التعدين",
-        "transport": "النقل والبنية التحتية",
-        "economy": "الاقتصاد",
-        "other": "أخرى",
+def format_item(article, result, number):
+    type_names = {
+        "news": "خبر",
+        "analysis": "تحليل",
+        "report": "تقرير",
+        "data": "بيانات",
     }
 
     impact_names = {
@@ -969,120 +951,214 @@ def build_message(article, ai):
         "unknown": "غير محدد",
     }
 
-    category = categories.get(
-        ai.get(
-            "category",
-            "other",
-        ),
-        "أخرى",
+    content_type = type_names.get(
+        result.get("content_type", "news"),
+        "خبر"
     )
 
     impact = impact_names.get(
-        ai.get(
-            "market_impact",
-            "unknown",
-        ),
-        "غير محدد",
+        result.get("market_impact", "unknown"),
+        "غير محدد"
     )
 
-    headline = clean_text(
-        ai.get(
-            "headline",
-            "",
+    text = (
+        f"{number}) <b>{result.get('headline', article['title'])}</b>\n"
+        f"🏷️ {content_type} · {result.get('category', 'economy')}\n"
+        f"{result.get('summary', '')}\n"
+    )
+
+    why = result.get(
+        "why_it_matters",
+        ""
+    ).strip()
+
+    if why:
+        text += (
+            f"💡 {why}\n"
         )
-    )
 
-    summary = clean_text(
-        ai.get(
-            "summary",
-            "",
-        )
-    )
-
-    why = clean_text(
-        ai.get(
-            "why_it_matters",
-            "",
-        )
-    )
-
-    importance = ai.get(
-        "importance",
-        0,
-    )
-
-    confidence = ai.get(
-        "confidence",
-        0,
-    )
-
-    facts = ai.get(
+    facts = result.get(
         "key_facts",
-        [],
-    )
-
-    entities = ai.get(
-        "affected_entities",
-        [],
-    )
-
-    message = (
-        "🇸🇦 <b>Saudi Economy Daily</b>\n\n"
-        f"📰 <b>{headline}</b>\n\n"
-        f"{summary}\n\n"
+        []
     )
 
     if facts:
-        message += (
-            "📌 <b>أبرز المعلومات:</b>\n"
-        )
-
-        for fact in facts[:3]:
-            message += (
-                f"• {clean_text(fact)}\n"
+        text += (
+            "📌 "
+            + " | ".join(
+                facts[:2]
             )
-
-        message += "\n"
-
-    if entities:
-        message += (
-            "🏢 <b>الجهات المتأثرة:</b>\n"
-            + "، ".join(
-                clean_text(x)
-                for x in entities[:5]
-            )
-            + "\n\n"
+            + "\n"
         )
 
-    if why:
-        message += (
-            "💡 <b>لماذا يهم؟</b>\n"
-            f"{why}\n\n"
-        )
-
-    message += (
-        f"📊 القطاع: {category}\n"
-        f"📈 التأثير المحتمل: {impact}\n"
-        f"🔴 الأهمية: {importance}/100\n"
-        f"🎯 الثقة: {confidence}/100\n\n"
-        f"📰 المصدر: {article['source']}\n"
-        f"🔗 {article['url']}"
+    text += (
+        f"📈 الأثر: {impact}\n"
+        f"📰 {article['source']}\n"
+        f"🔗 {article['url']}\n"
     )
 
-    return message
+    return text
 
 
-# ============================================================
-# Main
-# ============================================================
+def build_newsletter(
+    label,
+    items,
+):
+    date_text = datetime.now(
+        RIYADH
+    ).strftime("%Y-%m-%d")
+
+    parts = [
+        "🇸🇦 <b>Saudi Economy Daily</b>",
+        f"<b>{label}</b> · {date_text}",
+        "",
+        "أهم الأخبار والتحليلات الاقتصادية:",
+        "",
+    ]
+
+    for index, item in enumerate(
+        items,
+        start=1,
+    ):
+        parts.append(
+            format_item(
+                item["article"],
+                item["result"],
+                index,
+            )
+        )
+        parts.append("")
+
+    parts.append(
+        "🔎 أخبار ومحتوى مختصر، مع أولوية للمصادر الاقتصادية الرسمية والعالمية."
+    )
+
+    return "\n".join(parts)
+
+
+def choose_publishable(
+    candidates,
+    results,
+    slots,
+):
+    scored = []
+
+    for article in candidates:
+        result = results.get(
+            str(article["id"])
+        )
+
+        if not result:
+            continue
+
+        if not result.get("publish", False):
+            continue
+
+        importance = int(
+            result.get("importance", 0)
+        )
+
+        confidence = int(
+            result.get("confidence", 0)
+        )
+
+        if importance < PUBLISH_THRESHOLD:
+            continue
+
+        if confidence < MIN_CONFIDENCE:
+            continue
+
+        scored.append(
+            {
+                "article": article,
+                "result": result,
+            }
+        )
+
+    scored.sort(
+        key=lambda x: (
+            x["result"].get(
+                "importance",
+                0
+            ),
+            x["result"].get(
+                "confidence",
+                0
+            ),
+        ),
+        reverse=True,
+    )
+
+    selected = []
+    used_types = set()
+    used_sources = set()
+
+    # Prefer at least one analytical/report/data item when available.
+    for item in scored:
+        content_type = item["result"].get(
+            "content_type",
+            "news"
+        )
+
+        if (
+            content_type in {
+                "analysis",
+                "report",
+                "data",
+            }
+            and content_type not in used_types
+        ):
+            selected.append(item)
+            used_types.add(content_type)
+            used_sources.add(
+                item["article"]["source"]
+            )
+            break
+
+    # Fill the remaining slots with quality + source diversity.
+    for item in scored:
+        if item in selected:
+            continue
+
+        source = item["article"]["source"]
+
+        if source in used_sources and len(selected) < slots - 1:
+            continue
+
+        selected.append(item)
+        used_sources.add(source)
+        used_types.add(
+            item["result"].get(
+                "content_type",
+                "news"
+            )
+        )
+
+        if len(selected) >= slots:
+            break
+
+    # If source diversity prevented filling the slots, fill by score.
+    for item in scored:
+        if item in selected:
+            continue
+
+        selected.append(item)
+
+        if len(selected) >= slots:
+            break
+
+    return selected[:slots]
+
 
 def main():
     print("")
-    print("🇸🇦 Saudi Economy Daily 4.0")
+    print("🇸🇦 Saudi Economy Daily 5.0")
     print("Starting...")
     print("")
 
-    if not os.path.exists(SOURCES_FILE):
+    if not os.path.exists(
+        SOURCES_FILE
+    ):
         print(
             "ERROR: sources.json not found"
         )
@@ -1098,55 +1174,59 @@ def main():
         load_state()
     )
 
-    processed = state.get(
-        "processed",
-        {}
+    state = prepare_daily_state(
+        state
     )
 
-    all_articles = []
+    daily = state["daily"]
+    processed = state["processed"]
+    published = state["published"]
 
+    if daily["count"] >= DAILY_MAX:
+        print(
+            "Daily maximum reached. Skipping."
+        )
+        save_state(state)
+        return
+
+    all_articles = []
     seen_ids = set()
     seen_titles = set()
 
     # --------------------------------------------------------
-    # Collect
+    # Collect sources
     # --------------------------------------------------------
 
     for source in sources:
         try:
-            source_articles = fetch_source(
-                source
-            )
-
-            for article in source_articles:
+            for article in fetch_source(source):
                 aid = article["id"]
 
-                if aid in processed:
+                if aid in published:
+                    continue
+
+                if aid in daily["ids"]:
                     continue
 
                 if aid in seen_ids:
                     continue
 
-                normalized_title = title_key(
+                normalized = title_key(
                     article["title"]
                 )
 
                 if (
-                    normalized_title
-                    and normalized_title in seen_titles
+                    normalized
+                    and normalized in seen_titles
                 ):
                     continue
 
                 seen_ids.add(aid)
 
-                if normalized_title:
-                    seen_titles.add(
-                        normalized_title
-                    )
+                if normalized:
+                    seen_titles.add(normalized)
 
-                all_articles.append(
-                    article
-                )
+                all_articles.append(article)
 
         except Exception as error:
             print(
@@ -1156,162 +1236,166 @@ def main():
     print("")
     print("=" * 60)
     print(
-        f"NEW ARTICLES: {len(all_articles)}"
+        f"NEW CANDIDATES: {len(all_articles)}"
     )
     print("=" * 60)
 
     if not all_articles:
         save_state(state)
-        print("No new articles.")
+        print(
+            "No new articles."
+        )
         return
 
-    candidates = select_ai_candidates(
-        all_articles
+    # Do not recycle AI-rejected items too quickly.
+    recent_cutoff = datetime.now(
+        timezone.utc
+    ) - timedelta(
+        hours=ANALYSIS_RETRY_HOURS
     )
 
-    print("")
-    print(
-        f"AI candidates: {len(candidates)}"
-    )
-    print(
-        f"AI batch size: {AI_BATCH_SIZE}"
-    )
-    print("")
+    fresh_candidates = []
 
-    published = 0
-    processed_now = 0
+    for article in all_articles:
+        aid = article["id"]
 
-    # --------------------------------------------------------
-    # Analyze in batches
-    # --------------------------------------------------------
-
-    for batch_start in range(
-        0,
-        len(candidates),
-        AI_BATCH_SIZE,
-    ):
-        batch = candidates[
-            batch_start:
-            batch_start + AI_BATCH_SIZE
-        ]
-
-        batch_number = (
-            batch_start // AI_BATCH_SIZE
-        ) + 1
-
-        total_batches = (
-            len(candidates)
-            + AI_BATCH_SIZE
-            - 1
-        ) // AI_BATCH_SIZE
-
-        print("")
-        print("=" * 60)
-        print(
-            f"AI BATCH "
-            f"{batch_number}/{total_batches}"
-        )
-
-        for article in batch:
-            print(
-                f"- {article['title']}"
-            )
-
-        results = analyze_articles(
-            batch
-        )
-
-        if not results:
-            print(
-                "AI batch failed."
-            )
+        if aid not in processed:
+            fresh_candidates.append(article)
             continue
 
-        for article in batch:
-            aid = str(
-                article["id"]
-            )
-
-            result = results.get(
-                aid
-            )
-
-            if not result:
-                print(
-                    f"Missing AI result: "
-                    f"{article['title']}"
-                )
-                continue
-
-            print("")
-            print(
-                json.dumps(
-                    result,
-                    ensure_ascii=False,
-                    indent=2,
+        try:
+            last_time = datetime.fromisoformat(
+                str(processed[aid]).replace(
+                    "Z",
+                    "+00:00"
                 )
             )
 
-            # Save successful AI processing.
-            processed[aid] = (
-                datetime.now(
-                    timezone.utc
-                ).isoformat()
-            )
+            if last_time < recent_cutoff:
+                fresh_candidates.append(article)
 
-            processed_now += 1
+        except Exception:
+            fresh_candidates.append(article)
 
-            publish = result.get(
-                "publish",
-                False,
-            )
+    if not fresh_candidates:
+        fresh_candidates = all_articles
 
-            importance = result.get(
-                "importance",
-                0,
-            )
+    candidates = select_candidates(
+        fresh_candidates,
+        MAX_CANDIDATES_PER_RUN,
+    )
 
-            confidence = result.get(
-                "confidence",
-                0,
-            )
+    # Only the small candidate set gets full page/PDF extraction.
+    candidates = enrich_articles(
+        candidates
+    )
 
-            if (
-                publish
-                and importance >= PUBLISH_THRESHOLD
-                and confidence >= MIN_CONFIDENCE
-            ):
-                message = build_message(
-                    article,
-                    result,
+    # Normal newsletter size: 3 items.
+    # On the third newsletter, allow a 4th item when needed
+    # to reach the daily floor of 8 without exceeding 10.
+    if daily["newsletter_count"] >= 2 and daily["count"] < DAILY_MIN:
+        newsletter_capacity = 4
+    else:
+        newsletter_capacity = MAX_ITEMS_PER_NEWSLETTER
+
+    slots = min(
+        newsletter_capacity,
+        DAILY_MAX - daily["count"],
+    )
+
+    print("")
+    print(
+        f"Newsletter slots: {slots}"
+    )
+
+    results = analyze_articles(
+        candidates
+    )
+
+    if not results:
+        print(
+            "AI analysis failed."
+        )
+        save_state(state)
+        return
+
+    chosen = choose_publishable(
+        candidates,
+        results,
+        slots,
+    )
+
+    print(
+        f"Chosen for newsletter: {len(chosen)}"
+    )
+
+    if not chosen:
+        print(
+            "No items passed the publish threshold."
+        )
+
+        # Mark analyzed candidates so the same weak items
+        # are not repeatedly sent to AI in the same window.
+        now = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        for article in candidates:
+            processed[article["id"]] = now
+
+        save_state(state)
+        return
+
+    message = build_newsletter(
+        newsletter_label(),
+        chosen,
+    )
+
+    if send_telegram(message):
+        now = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        for item in chosen:
+            aid = item["article"]["id"]
+
+            published[aid] = now
+            daily["ids"].append(aid)
+            daily["count"] += 1
+            daily["content_types"].append(
+                item["result"].get(
+                    "content_type",
+                    "news"
                 )
+            )
 
-                if send_telegram(
-                    message
-                ):
-                    published += 1
-                    print(
-                        "✅ Published"
-                    )
-                    time.sleep(1)
+        daily["newsletter_count"] += 1
 
-            else:
-                print(
-                    "❌ Not published"
-                )
+        for article in candidates:
+            processed[article["id"]] = now
 
-    state["processed"] = processed
+        print("")
+        print(
+            f"✅ {newsletter_label()} sent."
+        )
+        print(
+            f"Daily published count: {daily['count']}"
+        )
+    else:
+        print(
+            "Newsletter sending failed."
+        )
 
     save_state(state)
 
     print("")
     print("=" * 60)
     print(
-        f"Successfully processed: "
-        f"{processed_now}"
+        f"Daily total: {daily['count']} / {DAILY_TARGET} target"
     )
     print(
-        f"Published: {published}"
+        f"Newsletters today: "
+        f"{daily['newsletter_count']} / 3"
     )
     print("=" * 60)
 
