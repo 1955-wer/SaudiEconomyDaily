@@ -77,6 +77,7 @@ ECONOMIC_KEYWORDS = [
     "إنتاج", "شحن", "لوجستيات", "سلاسل الإمداد",
 ]
 
+
 REJECT_TITLE_PATTERNS = [
     "معلومات الشركة",
     "أخبار ومعلومات سوق الأسهم",
@@ -97,6 +98,7 @@ def find_sources_file():
     for path in SOURCES_FILE_CANDIDATES:
         if os.path.exists(path):
             return path
+
     return None
 
 
@@ -112,9 +114,11 @@ def load_sources():
     try:
         with open(sources_file, "r", encoding="utf-8") as f:
             data = json.load(f)
+
     except json.JSONDecodeError as error:
         print(f"ERROR: Invalid sources.json: {error}")
         return []
+
     except OSError as error:
         print(f"ERROR: Could not read sources.json: {error}")
         return []
@@ -151,6 +155,7 @@ def load_state():
 
         data.setdefault("processed", {})
         data.setdefault("published", {})
+
         data.setdefault(
             "daily",
             {
@@ -166,6 +171,7 @@ def load_state():
 
     except Exception as error:
         print(f"WARNING: Could not load state: {error}")
+
         return {
             "processed": {},
             "published": {},
@@ -221,8 +227,10 @@ def cleanup_state(state):
                 dt = datetime.fromisoformat(
                     str(timestamp).replace("Z", "+00:00")
                 )
+
                 if dt >= cutoff:
                     cleaned[article_id] = timestamp
+
             except Exception:
                 continue
 
@@ -497,6 +505,7 @@ def extract_pdf_text(url):
 
         for page in reader.pages[:25]:
             text = page.extract_text() or ""
+
             if text:
                 pages.append(text)
 
@@ -551,9 +560,15 @@ def extract_article_text(url):
 
         for tag in soup(
             [
-                "script", "style", "noscript", "svg",
-                "nav", "footer", "header", "form",
-                "aside"
+                "script",
+                "style",
+                "noscript",
+                "svg",
+                "nav",
+                "footer",
+                "header",
+                "form",
+                "aside",
             ]
         ):
             tag.decompose()
@@ -914,6 +929,7 @@ def newsletter_label():
 
     if now.hour < 11:
         return "نشرة الصباح"
+
     if now.hour < 17:
         return "نشرة منتصف اليوم"
 
@@ -961,6 +977,16 @@ def send_telegram(message):
 
 
 def format_item(article, result, number):
+    """
+    Format one newsletter item.
+
+    الهدف:
+    - جعل كل خبر واضحاً ومنفصلاً.
+    - عدم دمج المعلومات في أسطر متداخلة.
+    - وضع المصدر في سطر مستقل.
+    - وضع رابط الخبر مباشرة تحت المصدر.
+    """
+
     type_names = {
         "news": "خبر",
         "analysis": "تحليل",
@@ -976,6 +1002,24 @@ def format_item(article, result, number):
         "unknown": "غير محدد",
     }
 
+    category_names = {
+        "oil": "النفط",
+        "markets": "الأسواق",
+        "banks": "البنوك",
+        "companies": "الشركات",
+        "investment": "الاستثمار",
+        "government": "الحكومة",
+        "real_estate": "العقار",
+        "employment": "التوظيف",
+        "technology": "التقنية",
+        "tourism": "السياحة",
+        "industry": "الصناعة",
+        "mining": "التعدين",
+        "transport": "النقل",
+        "economy": "الاقتصاد",
+        "other": "أخرى",
+    }
+
     content_type = type_names.get(
         result.get("content_type", "news"),
         "خبر"
@@ -986,43 +1030,163 @@ def format_item(article, result, number):
         "غير محدد"
     )
 
-    text = (
-        f"{number}) <b>{result.get('headline', article['title'])}</b>\n"
-        f"🏷️ {content_type} · {result.get('category', 'economy')}\n"
-        f"{result.get('summary', '')}\n"
+    category = category_names.get(
+        result.get("category", "economy"),
+        "الاقتصاد"
     )
 
-    why = result.get(
-        "why_it_matters",
-        ""
+    headline = (
+        result.get(
+            "headline",
+            article["title"]
+        )
+        or article["title"]
     ).strip()
 
-    if why:
-        text += (
-            f"💡 {why}\n"
+    summary = (
+        result.get(
+            "summary",
+            ""
         )
+        or ""
+    ).strip()
+
+    why = (
+        result.get(
+            "why_it_matters",
+            ""
+        )
+        or ""
+    ).strip()
 
     facts = result.get(
         "key_facts",
         []
     )
 
-    if facts:
-        text += (
-            "📌 "
-            + " | ".join(
-                facts[:2]
-            )
-            + "\n"
-        )
+    if not isinstance(facts, list):
+        facts = []
 
-    text += (
-        f"📈 الأثر: {impact}\n"
-        f"📰 {article['source']}\n"
-        f"🔗 {article['url']}\n"
+    facts = [
+        str(fact).strip()
+        for fact in facts
+        if str(fact).strip()
+    ][:2]
+
+    entities = result.get(
+        "affected_entities",
+        []
     )
 
-    return text
+    if not isinstance(entities, list):
+        entities = []
+
+    entities = [
+        str(entity).strip()
+        for entity in entities
+        if str(entity).strip()
+    ][:5]
+
+    importance = int(
+        result.get(
+            "importance",
+            0
+        )
+    )
+
+    confidence = int(
+        result.get(
+            "confidence",
+            0
+        )
+    )
+
+    parts = []
+
+    # العنوان
+    parts.append(
+        f"📰 <b>{headline}</b>"
+    )
+
+    parts.append("")
+
+    # نوع المحتوى
+    parts.append(
+        f"<b>النوع:</b> {content_type}"
+    )
+
+    parts.append("")
+
+    # الملخص
+    if summary:
+        parts.append(summary)
+
+    # أبرز المعلومات
+    if facts:
+        parts.append("")
+        parts.append(
+            "📌 <b>أبرز المعلومات:</b>"
+        )
+
+        for fact in facts:
+            parts.append(
+                f"• {fact}"
+            )
+
+    # الجهات المتأثرة
+    if entities:
+        parts.append("")
+        parts.append(
+            "🏢 <b>الجهات المتأثرة:</b>"
+        )
+        parts.append(
+            ", ".join(entities)
+        )
+
+    # لماذا يهم؟
+    if why:
+        parts.append("")
+        parts.append(
+            "💡 <b>لماذا يهم؟</b>"
+        )
+        parts.append(why)
+
+    # البيانات التحليلية
+    parts.append("")
+    parts.append(
+        f"📊 <b>القطاع:</b> {category}"
+    )
+
+    parts.append(
+        f"📈 <b>التأثير المحتمل:</b> {impact}"
+    )
+
+    parts.append(
+        f"🔴 <b>الأهمية:</b> {importance}/100"
+    )
+
+    parts.append(
+        f"🎯 <b>الثقة:</b> {confidence}/100"
+    )
+
+    # المصدر والرابط
+    parts.append("")
+    parts.append(
+        "📰 <b>المصدر:</b>"
+    )
+    parts.append(
+        str(article.get("source", "Unknown")).strip()
+    )
+
+    parts.append("")
+    parts.append(
+        "🔗 <b>رابط الخبر:</b>"
+    )
+    parts.append(
+        str(article.get("url", "")).strip()
+    )
+
+    return "\n".join(parts)
 
 
 def build_newsletter(
@@ -1035,9 +1199,11 @@ def build_newsletter(
 
     parts = [
         "🇸🇦 <b>Saudi Economy Daily</b>",
-        f"<b>{label}</b> · {date_text}",
+        f"<b>{label} · {date_text}</b>",
         "",
         "أهم الأخبار والتحليلات الاقتصادية:",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
         "",
     ]
 
@@ -1046,16 +1212,32 @@ def build_newsletter(
         start=1,
     ):
         parts.append(
+            f"<b>الخبر {index}</b>"
+        )
+
+        parts.append("")
+
+        parts.append(
             format_item(
                 item["article"],
                 item["result"],
                 index,
             )
         )
+
+        parts.append("")
+        parts.append(
+            "━━━━━━━━━━━━━━━━━━━━"
+        )
         parts.append("")
 
     parts.append(
-        "🔎 أخبار ومحتوى مختصر، مع أولوية للمصادر الاقتصادية الرسمية والعالمية."
+        "🔎 <b>Saudi Economy Daily</b>"
+    )
+
+    parts.append(
+        "أخبار وتحليلات اقتصادية مختارة، "
+        "مع أولوية للمصادر الاقتصادية الرسمية والعالمية."
     )
 
     return "\n".join(parts)
@@ -1134,10 +1316,15 @@ def choose_publishable(
             and content_type not in used_types
         ):
             selected.append(item)
-            used_types.add(content_type)
+
+            used_types.add(
+                content_type
+            )
+
             used_sources.add(
                 item["article"]["source"]
             )
+
             break
 
     # Fill the remaining slots with quality + source diversity.
@@ -1147,11 +1334,16 @@ def choose_publishable(
 
         source = item["article"]["source"]
 
-        if source in used_sources and len(selected) < slots - 1:
+        if (
+            source in used_sources
+            and len(selected) < slots - 1
+        ):
             continue
 
         selected.append(item)
+
         used_sources.add(source)
+
         used_types.add(
             item["result"].get(
                 "content_type",
@@ -1162,7 +1354,8 @@ def choose_publishable(
         if len(selected) >= slots:
             break
 
-    # If source diversity prevented filling the slots, fill by score.
+    # If source diversity prevented filling the slots,
+    # fill by score.
     for item in scored:
         if item in selected:
             continue
@@ -1207,6 +1400,7 @@ def main():
         print(
             "Daily maximum reached. Skipping."
         )
+
         save_state(state)
         return
 
@@ -1263,9 +1457,11 @@ def main():
 
     if not all_articles:
         save_state(state)
+
         print(
             "No new articles."
         )
+
         return
 
     # Do not recycle AI-rejected items too quickly.
@@ -1314,8 +1510,12 @@ def main():
     # Normal newsletter size: 3 items.
     # On the third newsletter, allow a 4th item when needed
     # to reach the daily floor of 8 without exceeding 10.
-    if daily["newsletter_count"] >= 2 and daily["count"] < DAILY_MIN:
+    if (
+        daily["newsletter_count"] >= 2
+        and daily["count"] < DAILY_MIN
+    ):
         newsletter_capacity = 4
+
     else:
         newsletter_capacity = MAX_ITEMS_PER_NEWSLETTER
 
@@ -1337,6 +1537,7 @@ def main():
         print(
             "AI analysis failed."
         )
+
         save_state(state)
         return
 
@@ -1381,8 +1582,11 @@ def main():
             aid = item["article"]["id"]
 
             published[aid] = now
+
             daily["ids"].append(aid)
+
             daily["count"] += 1
+
             daily["content_types"].append(
                 item["result"].get(
                     "content_type",
@@ -1399,9 +1603,11 @@ def main():
         print(
             f"✅ {newsletter_label()} sent."
         )
+
         print(
             f"Daily published count: {daily['count']}"
         )
+
     else:
         print(
             "Newsletter sending failed."
@@ -1411,13 +1617,16 @@ def main():
 
     print("")
     print("=" * 60)
+
     print(
         f"Daily total: {daily['count']} / {DAILY_TARGET} target"
     )
+
     print(
         f"Newsletters today: "
         f"{daily['newsletter_count']} / 3"
     )
+
     print("=" * 60)
 
 
