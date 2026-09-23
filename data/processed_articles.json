@@ -1258,22 +1258,10 @@
     "7e1382b7bd40ea042b0000388d74789691f56e15059c4e1d39254e0f456a1f7c": "2026-09-22T11:10:17.141224+00:00"
   },
   "daily": {
-    "date": "2026-09-22",
-    "count": 5,
-    "newsletter_count": 2,
-    "ids": [
-      "8c08955ee92a1a09302c087213581e807387a149ac99198c7533db47b187e110",
-      "eb5be3f661b16dd7a8897239dafb595b8594d241601d2a5a05cc5f6b7688cfe2",
-      "b6833e9650d68219cb5a9f7c8a16f7af239d4b0d78441914715f899bce9ff508",
-      "73d3ba1604b785cf7ce19be3fe2aa23bfdc631c38f134e2e5b903309f5add181",
-      "7e1382b7bd40ea042b0000388d74789691f56e15059c4e1d39254e0f456a1f7c"
-    ],
-    "content_types": [
-      "analysis",
-      "news",
-      "analysis",
-      "news",
-      "news"
-    ]
+    "date": "2026-09-23",
+    "count": 0,
+    "newsletter_count": 0,
+    "ids": [],
+    "content_types": []
   }
 }
