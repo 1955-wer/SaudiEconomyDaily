@@ -1342,14 +1342,10 @@
     "05639992348dafbdf05ee05d288fae3c729c7a3ef34adf9f3232064e7940d559": "2026-09-28T05:05:28.465034+00:00"
   },
   "daily": {
-    "date": "2026-09-28",
-    "count": 1,
-    "newsletter_count": 1,
-    "ids": [
-      "05639992348dafbdf05ee05d288fae3c729c7a3ef34adf9f3232064e7940d559"
-    ],
-    "content_types": [
-      "news"
-    ]
+    "date": "2026-09-29",
+    "count": 0,
+    "newsletter_count": 0,
+    "ids": [],
+    "content_types": []
   }
 }
