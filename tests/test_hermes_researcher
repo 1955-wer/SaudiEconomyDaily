@@ -1,0 +1,79 @@
+import json
+import os
+import stat
+from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from hermes_researcher import normalize_result, parse_results, research_articles
+
+
+def test_parse_results_and_normalization():
+    payload = {
+        "results": [
+            {
+                "id": "a1",
+                "publish": True,
+                "research_performed": True,
+                "duplicate_of": None,
+                "importance": 82,
+                "confidence": 91,
+                "content_type": "news",
+                "category": "markets",
+                "market_impact": "negative",
+                "headline": "عنوان",
+                "summary": "ملخص",
+                "why_it_matters": "سبب",
+                "affected_entities": ["تاسي"],
+                "key_facts": ["1", "2", "3", "4", "5"],
+                "supporting_sources": [
+                    {"name": "Reuters", "url": "https://reuters.com/example"}
+                ],
+            }
+        ]
+    }
+
+    result = parse_results(json.dumps(payload, ensure_ascii=False))["a1"]
+    assert result["importance"] == 82
+    assert result["confidence"] == 91
+    assert len(result["key_facts"]) == 4
+    assert result["research_performed"] is True
+
+
+def test_normalize_rejects_missing_required_text():
+    result = normalize_result({"id": "a1", "publish": True})
+    assert result is not None
+    assert result["publish"] is False
+
+
+def test_research_articles_with_fake_hermes(tmp_path, monkeypatch):
+    fake = tmp_path / "hermes"
+    fake.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json,sys\n"
+        "print(json.dumps({'results':[{'id':'a1','publish':True,'research_performed':True,"
+        "'duplicate_of':None,'importance':80,'confidence':90,'content_type':'news',"
+        "'category':'markets','market_impact':'neutral','headline':'عنوان','summary':'ملخص',"
+        "'why_it_matters':'سبب','affected_entities':['تاسي'],'key_facts':['1','2','3'],"
+        "'supporting_sources':[{'name':'Reuters','url':'https://reuters.com/example'}]}]}))\n"
+    )
+    fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("HERMES_BINARY", str(fake))
+    monkeypatch.setenv("HERMES_TIMEOUT_SECONDS", "60")
+
+    results = research_articles(
+        [{
+            "id": "a1",
+            "title": "خبر",
+            "source": "أرقام",
+            "url": "https://www.argaam.com/article",
+            "content": "محتوى الخبر",
+        }],
+        [{"name": "أرقام", "url": "https://www.argaam.com/", "type": "economic_news"}],
+    )
+
+    assert results["a1"]["publish"] is True
+    assert results["a1"]["supporting_sources"][0]["name"] == "Reuters"
