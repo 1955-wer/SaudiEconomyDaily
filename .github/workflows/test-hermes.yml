@@ -6,6 +6,7 @@ on:
 jobs:
   smoke-test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,16 +27,38 @@ jobs:
           set +e
           bash ./scripts/install_hermes.sh
           status=$?
+
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
           if [ "$status" -ne 0 ]; then
             echo "::error::Hermes installation failed."
             exit "$status"
           fi
+
           hermes --version
+
+      - name: Inspect Hermes
+        shell: bash
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+        run: |
+          echo "===== HERMES VERSION ====="
+          hermes --version
+
+          echo "===== HERMES CHAT HELP ====="
+          hermes chat --help
+
+          echo "===== FIRECRAWL KEY STATUS ====="
+          if [ -n "$FIRECRAWL_API_KEY" ]; then
+            echo "FIRECRAWL_API_KEY is set"
+          else
+            echo "FIRECRAWL_API_KEY is NOT set"
+          fi
 
       - name: Run Hermes smoke test
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           HERMES_MODEL: ${{ vars.HERMES_MODEL || 'openrouter/free' }}
           HERMES_MAX_TURNS: "6"
           HERMES_MAX_CANDIDATES: "1"
