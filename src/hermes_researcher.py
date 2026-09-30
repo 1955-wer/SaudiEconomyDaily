@@ -6,7 +6,7 @@ import tempfile
 from typing import Any
 
 
-DEFAULT_MODEL = "inclusionai/ling-3.0-flash-fin:free"
+DEFAULT_MODEL = "openrouter/free"
 DEFAULT_CONFIG_FILE = os.path.join("config", "hermes.json")
 DEFAULT_MAX_TURNS = 8
 DEFAULT_TIMEOUT_SECONDS = 420
