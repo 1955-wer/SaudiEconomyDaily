@@ -13,17 +13,36 @@ DEFAULT_TIMEOUT_SECONDS = 420
 DEFAULT_MAX_CANDIDATES = 3
 
 ALLOWED_CATEGORIES = {
-    "oil", "markets", "banks", "companies", "investment",
-    "government", "real_estate", "employment", "technology",
-    "tourism", "industry", "mining", "transport", "economy", "other",
+    "oil",
+    "markets",
+    "banks",
+    "companies",
+    "investment",
+    "government",
+    "real_estate",
+    "employment",
+    "technology",
+    "tourism",
+    "industry",
+    "mining",
+    "transport",
+    "economy",
+    "other",
 }
 
 ALLOWED_IMPACTS = {
-    "positive", "negative", "neutral", "mixed", "unknown",
+    "positive",
+    "negative",
+    "neutral",
+    "mixed",
+    "unknown",
 }
 
 ALLOWED_TYPES = {
-    "news", "analysis", "report", "data",
+    "news",
+    "analysis",
+    "report",
+    "data",
 }
 
 
@@ -126,7 +145,6 @@ def load_config() -> dict[str, Any]:
     for key in ("max_turns", "timeout_seconds", "max_candidates"):
         try:
             config[key] = int(config[key])
-
         except (TypeError, ValueError):
             config[key] = {
                 "max_turns": DEFAULT_MAX_TURNS,
@@ -137,12 +155,10 @@ def load_config() -> dict[str, Any]:
     mode = os.getenv("HERMES_ENABLED")
 
     if mode is not None:
-        config["enabled"] = mode.strip().lower() not in {
-            "0",
-            "false",
-            "no",
-            "off",
-        }
+        config["enabled"] = (
+            mode.strip().lower()
+            not in {"0", "false", "no", "off"}
+        )
 
     fallback = os.getenv("HERMES_FALLBACK_TO_LEGACY")
 
@@ -180,12 +196,30 @@ def load_config() -> dict[str, Any]:
 
 
 def clean_json_text(text: str) -> str:
+    """
+    Extract the JSON object from Hermes output.
+
+    Hermes may print:
+    - progress messages
+    - reasoning
+    - tool output
+    - the final JSON
+    - additional terminal output
+
+    Therefore we locate the first JSON object and the last closing brace.
+    """
+
     if not text:
         return ""
 
     text = str(text).strip()
 
-    for prefix in ("```json", "```JSON", "```"):
+    # Remove common Markdown code fences.
+    for prefix in (
+        "```json",
+        "```JSON",
+        "```",
+    ):
         if text.startswith(prefix):
             text = text[len(prefix):]
             break
@@ -193,19 +227,37 @@ def clean_json_text(text: str) -> str:
     if text.endswith("```"):
         text = text[:-3]
 
+    text = text.strip()
+
+    # First attempt: direct JSON parsing.
+    try:
+        json.loads(text)
+        return text
+    except json.JSONDecodeError:
+        pass
+
+    # Find the first JSON object.
     first = text.find("{")
+
+    # Find the last closing brace.
     last = text.rfind("}")
 
     if first != -1 and last != -1 and last > first:
-        text = text[first:last + 1]
+        candidate = text[first:last + 1].strip()
 
-    return text.strip()
+        # Verify that the extracted candidate is actually JSON.
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pass
+
+    return text
 
 
 def _as_int(value: Any, default: int = 0) -> int:
     try:
         return int(value)
-
     except (TypeError, ValueError):
         return default
 
@@ -214,26 +266,30 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
     if not isinstance(item, dict):
         return None
 
-    article_id = str(
-        item.get("id", "")
-    ).strip()
+    article_id = str(item.get("id", "")).strip()
 
     if not article_id:
         return None
 
     importance = max(
         0,
-        min(100, _as_int(item.get("importance"), 0))
+        min(
+            100,
+            _as_int(item.get("importance"), 0)
+        ),
     )
 
     confidence = max(
         0,
-        min(100, _as_int(item.get("confidence"), 0))
+        min(
+            100,
+            _as_int(item.get("confidence"), 0)
+        ),
     )
 
     content_type = item.get(
         "content_type",
-        "news"
+        "news",
     )
 
     if content_type not in ALLOWED_TYPES:
@@ -241,7 +297,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     category = item.get(
         "category",
-        "other"
+        "other",
     )
 
     if category not in ALLOWED_CATEGORIES:
@@ -249,7 +305,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     impact = item.get(
         "market_impact",
-        "unknown"
+        "unknown",
     )
 
     if impact not in ALLOWED_IMPACTS:
@@ -257,7 +313,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     research_performed = item.get(
         "research_performed",
-        False
+        False,
     )
 
     if not isinstance(research_performed, bool):
@@ -265,9 +321,12 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     duplicate_of = item.get("duplicate_of")
 
-    if duplicate_of in (None, "", False):
+    if duplicate_of in (
+        None,
+        "",
+        False,
+    ):
         duplicate_of = None
-
     else:
         duplicate_of = str(
             duplicate_of
@@ -278,17 +337,17 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     entities = item.get(
         "affected_entities",
-        []
+        [],
     )
 
     facts = item.get(
         "key_facts",
-        []
+        [],
     )
 
     supporting_sources = item.get(
         "supporting_sources",
-        []
+        [],
     )
 
     if not isinstance(entities, list):
@@ -315,6 +374,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
     normalized_sources = []
 
     for source in supporting_sources[:8]:
+
         if not isinstance(source, dict):
             continue
 
@@ -353,7 +413,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
 
     publish = item.get(
         "publish",
-        False
+        False,
     )
 
     if not isinstance(publish, bool):
@@ -381,9 +441,7 @@ def normalize_result(item: Any) -> dict[str, Any] | None:
     }
 
 
-def parse_results(
-    text: str,
-) -> dict[str, dict[str, Any]]:
+def parse_results(text: str) -> dict[str, dict[str, Any]]:
     payload = clean_json_text(text)
 
     if not payload:
@@ -391,7 +449,12 @@ def parse_results(
             "Hermes returned an empty response"
         )
 
-    parsed = json.loads(payload)
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError as error:
+        raise ValueError(
+            f"Hermes returned invalid JSON: {error}"
+        ) from error
 
     raw_results = (
         parsed.get("results", [])
@@ -421,9 +484,13 @@ def find_hermes_binary() -> str | None:
     )
 
     if configured:
+
         if (
             os.path.isfile(configured)
-            and os.access(configured, os.X_OK)
+            and os.access(
+                configured,
+                os.X_OK,
+            )
         ):
             return configured
 
@@ -441,9 +508,11 @@ def find_hermes_binary() -> str | None:
             "~/.hermes/hermes-agent/.hermes/bin/hermes"
         ),
     ):
+
         found = (
             shutil.which(candidate)
-            if os.path.basename(candidate) == candidate
+            if os.path.basename(candidate)
+            == candidate
             else candidate
         )
 
@@ -461,9 +530,11 @@ def build_prompt(
     articles: list[dict[str, Any]],
     sources: list[dict[str, Any]],
 ) -> str:
+
     source_hints = []
 
     for source in sources:
+
         source_hints.append(
             {
                 "name": str(
@@ -489,6 +560,7 @@ def build_prompt(
     prepared = []
 
     for article in articles:
+
         prepared.append(
             {
                 "id": str(
@@ -533,6 +605,10 @@ def build_prompt(
 - إذا كان عنصران أو أكثر يصفون الحدث نفسه، اختر القصة الأساسية واملأ duplicate_of في النسخ الأخرى.
 - لا تستخدم duplicate_of إلا عندما يكون الحدث نفسه فعلاً، وليس مجرد علاقة أو تشابه موضوعي.
 - أعد نتيجة لكل id ما لم يتعذر عليك تحليلها بالكامل.
+
+مهم جداً:
+يجب أن يكون آخر جزء من إجابتك JSON صالحاً فقط بالشكل المطلوب أعلاه.
+لا تضع أي JSON إضافي بعده.
 """
 
 
@@ -540,6 +616,7 @@ def _write_runtime_config(
     config: dict[str, Any],
     home: str,
 ) -> None:
+
     os.makedirs(
         home,
         exist_ok=True,
@@ -552,6 +629,7 @@ def _write_runtime_config(
     ]
 
     if config.get("web_backend"):
+
         lines.extend(
             [
                 "web:",
@@ -560,19 +638,146 @@ def _write_runtime_config(
         )
 
     with open(
-        os.path.join(home, "config.yaml"),
+        os.path.join(
+            home,
+            "config.yaml",
+        ),
         "w",
         encoding="utf-8",
     ) as f:
+
         f.write(
             "\n".join(lines) + "\n"
         )
+
+
+def _extract_json_from_output(
+    stdout: str,
+) -> str:
+    """
+    Hermes can print progress messages and tool information
+    before/after the actual model answer.
+
+    This function extracts the final JSON object safely.
+    """
+
+    if not stdout:
+        return ""
+
+    text = stdout.strip()
+
+    # First, try the whole output.
+    try:
+        parsed = json.loads(text)
+
+        if isinstance(parsed, dict):
+            return json.dumps(
+                parsed,
+                ensure_ascii=False,
+            )
+
+    except json.JSONDecodeError:
+        pass
+
+    # Remove Markdown fences if present.
+    text = text.replace(
+        "```json",
+        "",
+    )
+
+    text = text.replace(
+        "```JSON",
+        "",
+    )
+
+    text = text.replace(
+        "```",
+        "",
+    )
+
+    text = text.strip()
+
+    # Locate all possible JSON object starts.
+    positions = []
+
+    start = 0
+
+    while True:
+
+        position = text.find(
+            "{",
+            start,
+        )
+
+        if position == -1:
+            break
+
+        positions.append(position)
+        start = position + 1
+
+    # Try every possible JSON object from the end.
+    # This is useful when Hermes printed an earlier JSON-like object
+    # and the final answer appears later.
+    for first in reversed(positions):
+
+        candidate = text[first:]
+
+        # Try progressively shorter endings.
+        last = len(candidate)
+
+        while last > 0:
+
+            closing = candidate.rfind(
+                "}",
+                0,
+                last,
+            )
+
+            if closing == -1:
+                break
+
+            possible = candidate[
+                :closing + 1
+            ].strip()
+
+            try:
+                parsed = json.loads(
+                    possible
+                )
+
+                if isinstance(parsed, dict):
+                    if "results" in parsed:
+                        return json.dumps(
+                            parsed,
+                            ensure_ascii=False,
+                        )
+
+            except json.JSONDecodeError:
+                pass
+
+            last = closing
+
+    # Fallback to first/last brace extraction.
+    first = text.find("{")
+    last = text.rfind("}")
+
+    if (
+        first != -1
+        and last != -1
+        and last > first
+    ):
+        return text[
+            first:last + 1
+        ].strip()
+
+    return text
 
 
 def research_articles(
     articles: list[dict[str, Any]],
     sources: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
+
     config = load_config()
 
     if not config["enabled"]:
@@ -662,7 +867,7 @@ def research_articles(
 
     if config.get("web_backend"):
         print(
-            f"Hermes web backend: "
+            "Hermes web backend: "
             f"{config['web_backend']}"
         )
     else:
@@ -671,17 +876,21 @@ def research_articles(
         )
 
     try:
+
         completed = subprocess.run(
             command,
             input=prompt,
             text=True,
             capture_output=True,
-            timeout=config["timeout_seconds"],
+            timeout=config[
+                "timeout_seconds"
+            ],
             env=env,
             check=False,
         )
 
     except subprocess.TimeoutExpired:
+
         print(
             "Hermes research timed out."
         )
@@ -694,6 +903,7 @@ def research_articles(
         return {}
 
     except OSError as error:
+
         print(
             f"Hermes execution error: {error}"
         )
@@ -714,8 +924,9 @@ def research_articles(
     ).strip()
 
     if completed.returncode != 0:
+
         print(
-            f"Hermes exit code: "
+            "Hermes exit code: "
             f"{completed.returncode}"
         )
 
@@ -747,23 +958,24 @@ def research_articles(
         return {}
 
     if stderr:
+
         print(
-            f"Hermes diagnostics: "
+            "Hermes diagnostics: "
             f"{stderr[-2000:]}"
         )
 
-    try:
-        results = parse_results(
-            stdout
-        )
+    # IMPORTANT:
+    # Hermes may put reasoning/tool output/progress information
+    # in stdout together with the final JSON.
+    # Extract only the valid JSON object.
+    stdout_for_json = _extract_json_from_output(
+        stdout
+    )
 
-    except (
-        ValueError,
-        json.JSONDecodeError,
-    ) as error:
+    if not stdout_for_json:
+
         print(
-            f"Hermes returned invalid JSON: "
-            f"{error}"
+            "Hermes returned no JSON content."
         )
 
         print(
@@ -777,9 +989,52 @@ def research_articles(
 
         return {}
 
-    # Only accept results that explicitly report a research pass and include
-    # at least one supporting source different from the original source.
-    # This prevents a plain rewrite from silently replacing the legacy path.
+    try:
+
+        results = parse_results(
+            stdout_for_json
+        )
+
+    except (
+        ValueError,
+        json.JSONDecodeError,
+    ) as error:
+
+        print(
+            "Hermes returned invalid JSON: "
+            f"{error}"
+        )
+
+        print(
+            "===== EXTRACTED OUTPUT ====="
+        )
+
+        print(
+            stdout_for_json[:10000]
+        )
+
+        print(
+            "===== RAW STDOUT ====="
+        )
+
+        print(
+            stdout[:5000]
+        )
+
+        shutil.rmtree(
+            runtime_home,
+            ignore_errors=True,
+        )
+
+        return {}
+
+    # Only accept results that explicitly report
+    # a research pass and include at least one
+    # supporting source different from the original source.
+    #
+    # This prevents a plain rewrite from silently
+    # replacing the legacy path.
+
     validated = {}
 
     original_by_id = {
@@ -790,15 +1045,19 @@ def research_articles(
     }
 
     for article_id, result in results.items():
+
         if not result.get(
             "research_performed"
         ):
             continue
 
-        primary = original_by_id.get(
-            article_id,
-            "",
-        ).lower()
+        primary = (
+            original_by_id.get(
+                article_id,
+                "",
+            )
+            .lower()
+        )
 
         independent_sources = []
 
@@ -806,6 +1065,7 @@ def research_articles(
             "supporting_sources",
             [],
         ):
+
             name = str(
                 source.get("name", "")
             ).strip()
@@ -826,7 +1086,9 @@ def research_articles(
         if not independent_sources:
             continue
 
-        validated[article_id] = result
+        validated[
+            article_id
+        ] = result
 
     print(
         "Hermes validated research results: "
@@ -845,6 +1107,7 @@ def supporting_source_names(
     result: dict[str, Any],
     primary_source: str,
 ) -> list[str]:
+
     values = []
 
     primary = (
@@ -853,14 +1116,17 @@ def supporting_source_names(
         .lower()
     )
 
-    for item in (
+    sources = (
         result.get(
             "supporting_sources",
             [],
         )
         if isinstance(result, dict)
         else []
-    ):
+    )
+
+    for item in sources:
+
         if not isinstance(item, dict):
             continue
 
