@@ -3,6 +3,7 @@ import json
 import hashlib
 import re
 import time
+import html
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urljoin, urlparse
@@ -19,6 +20,7 @@ except ImportError:
     PdfReader = None
 
 from ai_editor import analyze_articles
+from hermes_researcher import research_articles, load_config as load_hermes_config, supporting_source_names
 
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -54,6 +56,7 @@ MAX_ARTICLE_AGE_HOURS = 30
 MAX_CONTENT_LENGTH = 18000
 
 REQUEST_TIMEOUT = 20
+TELEGRAM_MAX_LENGTH = 3900
 STATE_RETENTION_DAYS = 30
 ANALYSIS_RETRY_HOURS = 18
 
@@ -936,6 +939,110 @@ def newsletter_label():
     return "النشرة المسائية"
 
 
+def get_news_processor_mode():
+    mode = os.getenv("NEWS_PROCESSOR")
+    if mode:
+        return mode.strip().lower()
+
+    config = load_hermes_config()
+    if config.get("enabled", True):
+        return "hermes"
+
+    return "legacy"
+
+
+def choose_research_candidates(candidates):
+    config = load_hermes_config()
+    limit = max(1, min(len(candidates), int(config.get("max_candidates", 3))))
+
+    return sorted(
+        candidates,
+        key=candidate_score,
+        reverse=True,
+    )[:limit]
+
+
+def suppress_hermes_duplicates(results):
+    if not results:
+        return results
+
+    cleaned = dict(results)
+
+    for article_id, result in results.items():
+        duplicate_of = result.get("duplicate_of")
+        if duplicate_of and duplicate_of in results:
+            cleaned.pop(article_id, None)
+
+    return cleaned
+
+
+def run_news_processor(candidates, sources):
+    mode = get_news_processor_mode()
+    normalized_mode = mode if mode in {"legacy", "hermes"} else "hermes"
+
+    print(f"News processor mode: {normalized_mode}")
+
+    if normalized_mode == "legacy":
+        return analyze_articles(candidates), "legacy"
+
+    research_candidates = choose_research_candidates(candidates)
+    hermes_results = research_articles(
+        research_candidates,
+        sources,
+    )
+    hermes_results = suppress_hermes_duplicates(hermes_results)
+
+    if hermes_results:
+        return hermes_results, "hermes"
+
+    fallback_enabled = bool(load_hermes_config().get("fallback_to_legacy", True))
+    if not fallback_enabled:
+        print("Hermes failed and legacy fallback is disabled.")
+        return {}, "hermes"
+
+    print("Hermes failed. Falling back to the existing AI editor.")
+    return analyze_articles(candidates), "legacy_fallback"
+
+
+def split_telegram_message(message):
+    if len(message) <= TELEGRAM_MAX_LENGTH:
+        return [message]
+
+    separator = "━━━━━━━━━━━━━━━━━━━━"
+    blocks = message.split(f"\n\n{separator}\n\n")
+    chunks = []
+    current = ""
+
+    for block in blocks:
+        candidate = block if not current else current + "\n\n" + separator + "\n\n" + block
+
+        if len(candidate) <= TELEGRAM_MAX_LENGTH:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(current)
+
+        if len(block) <= TELEGRAM_MAX_LENGTH:
+            current = block
+        else:
+            # Extremely long single blocks are split only at newline boundaries
+            # so Telegram HTML tags are not intentionally broken mid-line.
+            lines = block.splitlines(keepends=True)
+            current = ""
+            for line in lines:
+                if current and len(current) + len(line) > TELEGRAM_MAX_LENGTH:
+                    chunks.append(current.rstrip())
+                    current = line
+                else:
+                    current += line
+
+    if current.strip():
+        chunks.append(current.rstrip())
+
+    return chunks or [message[:TELEGRAM_MAX_LENGTH]]
+
+
 def send_telegram(message):
     if not TOKEN or not CHAT_ID:
         print(
@@ -949,25 +1056,30 @@ def send_telegram(message):
     )
 
     try:
-        response = requests.post(
-            url,
-            json={
-                "chat_id": CHAT_ID,
-                "text": message,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": False,
-            },
-            timeout=REQUEST_TIMEOUT,
-        )
+        chunks = split_telegram_message(message)
+        print(f"Telegram messages to send: {len(chunks)}")
 
-        print(
-            f"Telegram status: {response.status_code}"
-        )
+        for index, chunk in enumerate(chunks, start=1):
+            response = requests.post(
+                url,
+                json={
+                    "chat_id": CHAT_ID,
+                    "text": chunk,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": False,
+                },
+                timeout=REQUEST_TIMEOUT,
+            )
 
-        if not response.ok:
-            print(response.text[:2000])
+            print(
+                f"Telegram status {index}/{len(chunks)}: {response.status_code}"
+            )
 
-        return response.ok
+            if not response.ok:
+                print(response.text[:2000])
+                return False
+
+        return True
 
     except Exception as error:
         print(
@@ -986,13 +1098,6 @@ def format_item(article, result, number):
     - وضع المصدر في سطر مستقل.
     - وضع رابط الخبر مباشرة تحت المصدر.
     """
-
-    type_names = {
-        "news": "خبر",
-        "analysis": "تحليل",
-        "report": "تقرير",
-        "data": "بيانات",
-    }
 
     impact_names = {
         "positive": "إيجابي",
@@ -1019,11 +1124,6 @@ def format_item(article, result, number):
         "economy": "الاقتصاد",
         "other": "أخرى",
     }
-
-    content_type = type_names.get(
-        result.get("content_type", "news"),
-        "خبر"
-    )
 
     impact = impact_names.get(
         result.get("market_impact", "unknown"),
@@ -1071,7 +1171,7 @@ def format_item(article, result, number):
         str(fact).strip()
         for fact in facts
         if str(fact).strip()
-    ][:2]
+    ][:4]
 
     entities = result.get(
         "affected_entities",
@@ -1086,6 +1186,11 @@ def format_item(article, result, number):
         for entity in entities
         if str(entity).strip()
     ][:5]
+
+    supporting_sources = supporting_source_names(
+        result,
+        str(article.get("source", "")),
+    )
 
     importance = int(
         result.get(
@@ -1105,21 +1210,14 @@ def format_item(article, result, number):
 
     # العنوان
     parts.append(
-        f"📰 <b>{headline}</b>"
-    )
-
-    parts.append("")
-
-    # نوع المحتوى
-    parts.append(
-        f"<b>النوع:</b> {content_type}"
+        f"📰 <b>{html.escape(headline)}</b>"
     )
 
     parts.append("")
 
     # الملخص
     if summary:
-        parts.append(summary)
+        parts.append(html.escape(summary))
 
     # أبرز المعلومات
     if facts:
@@ -1130,7 +1228,7 @@ def format_item(article, result, number):
 
         for fact in facts:
             parts.append(
-                f"• {fact}"
+                f"• {html.escape(fact)}"
             )
 
     # الجهات المتأثرة
@@ -1140,7 +1238,7 @@ def format_item(article, result, number):
             "🏢 <b>الجهات المتأثرة:</b>"
         )
         parts.append(
-            ", ".join(entities)
+            html.escape(", ".join(entities))
         )
 
     # لماذا يهم؟
@@ -1149,7 +1247,7 @@ def format_item(article, result, number):
         parts.append(
             "💡 <b>لماذا يهم؟</b>"
         )
-        parts.append(why)
+        parts.append(html.escape(why))
 
     # البيانات التحليلية
     parts.append("")
@@ -1169,13 +1267,20 @@ def format_item(article, result, number):
         f"🎯 <b>الثقة:</b> {confidence}/100"
     )
 
+    if supporting_sources:
+        parts.append("")
+        parts.append(
+            "🔎 <b>مصادر مساندة:</b> "
+            + html.escape(" · ".join(supporting_sources))
+        )
+
     # المصدر والرابط
     parts.append("")
     parts.append(
         "📰 <b>المصدر:</b>"
     )
     parts.append(
-        str(article.get("source", "Unknown")).strip()
+        html.escape(str(article.get("source", "Unknown")).strip())
     )
 
     parts.append("")
@@ -1183,7 +1288,7 @@ def format_item(article, result, number):
         "🔗 <b>رابط الخبر:</b>"
     )
     parts.append(
-        str(article.get("url", "")).strip()
+        html.escape(str(article.get("url", "")).strip(), quote=True)
     )
 
     return "\n".join(parts)
@@ -1236,8 +1341,8 @@ def build_newsletter(
     )
 
     parts.append(
-        "أخبار وتحليلات اقتصادية مختارة، "
-        "مع أولوية للمصادر الاقتصادية الرسمية والعالمية."
+        "أخبار اقتصادية مختارة ومدعومة ببحث إضافي وربط للسياق، "
+        "مع أولوية للمصادر الرسمية والاقتصادية الموثوقة."
     )
 
     return "\n".join(parts)
@@ -1529,13 +1634,14 @@ def main():
         f"Newsletter slots: {slots}"
     )
 
-    results = analyze_articles(
-        candidates
+    results, processor_used = run_news_processor(
+        candidates,
+        sources,
     )
 
     if not results:
         print(
-            "AI analysis failed."
+            "AI research/analysis failed."
         )
 
         save_state(state)
@@ -1601,7 +1707,7 @@ def main():
 
         print("")
         print(
-            f"✅ {newsletter_label()} sent."
+            f"✅ {newsletter_label()} sent using {processor_used}."
         )
 
         print(
