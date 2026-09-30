@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          ./scripts/install_hermes.sh
+          bash ./scripts/install_hermes.sh
           status=$?
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           if [ "$status" -ne 0 ]; then
