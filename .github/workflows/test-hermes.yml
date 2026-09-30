@@ -36,7 +36,7 @@ jobs:
       - name: Run Hermes smoke test
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          HERMES_MODEL: ${{ vars.HERMES_MODEL || 'inclusionai/ling-3.0-flash-fin:free' }}
+          HERMES_MODEL: ${{ vars.HERMES_MODEL || 'openrouter/free' }}
           HERMES_MAX_TURNS: "6"
           HERMES_MAX_CANDIDATES: "1"
           HERMES_TIMEOUT_SECONDS: "300"
