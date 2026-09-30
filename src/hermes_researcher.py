@@ -442,12 +442,13 @@ def research_articles(
     stdout = (completed.stdout or "").strip()
     stderr = (completed.stderr or "").strip()
 
-    if completed.returncode != 0:
-        print(f"Hermes exit code: {completed.returncode}")
-        if stderr:
-            print(stderr[-4000:])
-        elif stdout:
-            print(stdout[-4000:])
+   if completed.returncode != 0:
+    print(f"Hermes exit code: {completed.returncode}")
+    print("===== HERMES STDERR =====")
+    print(stderr[-10000:] if stderr else "(empty)")
+    print("===== HERMES STDOUT =====")
+    print(stdout[-10000:] if stdout else "(empty)")
+
         shutil.rmtree(runtime_home, ignore_errors=True)
         return {}
 
