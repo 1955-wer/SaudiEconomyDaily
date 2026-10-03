@@ -3,6 +3,10 @@ name: Saudi Economy Daily
 on:
   workflow_dispatch:
 
+  push:
+    paths-ignore:
+      - "data/**"
+
   schedule:
     # 08:00 Riyadh
     - cron: "0 8 * * *"
