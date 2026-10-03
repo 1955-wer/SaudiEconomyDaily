@@ -60,6 +60,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           HERMES_MODEL: ${{ secrets.HERMES_MODEL }}
           HERMES_WEB_BACKEND: ${{ secrets.HERMES_WEB_BACKEND }}
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          PARALLEL_API_KEY: ${{ secrets.PARALLEL_API_KEY }}
         run: |
           python src/fetch_news.py
 
