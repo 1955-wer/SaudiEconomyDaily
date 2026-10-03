@@ -1,0 +1,9 @@
+{
+  "model": "openrouter/auto",
+  "max_turns": 8,
+  "timeout_seconds": 420,
+  "max_candidates": 3,
+  "web_backend": "",
+  "enabled": true,
+  "fallback_to_legacy": true
+}
