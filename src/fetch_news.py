@@ -977,31 +977,98 @@ def suppress_hermes_duplicates(results):
 
 
 def run_news_processor(candidates, sources):
+    """
+    Two-engine pipeline:
+    1) Hermes is the primary research/verification/linking layer.
+    2) The legacy AI editor is an independent fallback and completion layer.
+
+    Hermes failure must never prevent the newsletter from being produced.
+    Partial Hermes results are preserved; the legacy engine handles the
+    candidates Hermes could not process.
+    """
     mode = get_news_processor_mode()
     normalized_mode = mode if mode in {"legacy", "hermes"} else "hermes"
 
     print(f"News processor mode: {normalized_mode}")
 
     if normalized_mode == "legacy":
-        return analyze_articles(candidates), "legacy"
+        try:
+            return analyze_articles(candidates), "legacy"
+        except Exception as error:
+            print(f"Legacy AI processor failed: {error}")
+            return {}, "legacy_failed"
+
+    fallback_enabled = bool(
+        load_hermes_config().get(
+            "fallback_to_legacy",
+            True,
+        )
+    )
 
     research_candidates = choose_research_candidates(candidates)
-    hermes_results = research_articles(
-        research_candidates,
-        sources,
-    )
-    hermes_results = suppress_hermes_duplicates(hermes_results)
+
+    # ---------------------------
+    # Path 1: Hermes research
+    # ---------------------------
+    try:
+        hermes_results = research_articles(
+            research_candidates,
+            sources,
+        )
+        hermes_results = suppress_hermes_duplicates(
+            hermes_results
+        )
+    except Exception as error:
+        print(f"Hermes processor failed: {error}")
+        hermes_results = {}
 
     if hermes_results:
+        print(
+            "Hermes produced "
+            f"{len(hermes_results)} validated result(s)."
+        )
+
+    # ---------------------------
+    # Path 2: legacy AI fallback/completion
+    # ---------------------------
+    if not fallback_enabled:
         return hermes_results, "hermes"
 
-    fallback_enabled = bool(load_hermes_config().get("fallback_to_legacy", True))
-    if not fallback_enabled:
-        print("Hermes failed and legacy fallback is disabled.")
-        return {}, "hermes"
+    hermes_ids = set(hermes_results.keys())
 
-    print("Hermes failed. Falling back to the existing AI editor.")
-    return analyze_articles(candidates), "legacy_fallback"
+    # If Hermes returned only some stories, let the independent
+    # legacy engine process the remaining stories instead of dropping them.
+    remaining = [
+        article
+        for article in candidates
+        if str(article.get("id", "")) not in hermes_ids
+    ]
+
+    legacy_results = {}
+
+    if remaining:
+        try:
+            print(
+                "Legacy AI fallback/completion candidates: "
+                f"{len(remaining)}"
+            )
+            legacy_results = analyze_articles(remaining)
+        except Exception as error:
+            print(f"Legacy AI processor failed: {error}")
+            legacy_results = {}
+
+    merged = dict(legacy_results)
+    # Hermes is authoritative for stories it successfully researched.
+    merged.update(hermes_results)
+
+    if hermes_results and legacy_results:
+        return merged, "hermes+legacy"
+    if hermes_results:
+        return hermes_results, "hermes"
+    if legacy_results:
+        return legacy_results, "legacy_fallback"
+
+    return {}, "both_failed"
 
 
 def split_telegram_message(message):
