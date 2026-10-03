@@ -6,7 +6,8 @@ import requests
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "inclusionai/ling-3.0-flash-fin:free"
+MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free"
+FALLBACK_MODEL = "openrouter/free"
 
 MAX_RETRIES = 2
 
@@ -310,6 +311,17 @@ def analyze_articles(articles):
                     time.sleep(attempt * 5)
                     continue
                 return {}
+
+            # Model slugs can become unavailable or leave the free tier.
+            # Recover automatically by switching to OpenRouter's current
+            # free-model router instead of aborting the whole newsletter run.
+            if response.status_code == 404 and payload.get("model") != FALLBACK_MODEL:
+                print(
+                    f"OpenRouter model unavailable: {payload.get('model')}. "
+                    f"Retrying with {FALLBACK_MODEL}."
+                )
+                payload["model"] = FALLBACK_MODEL
+                continue
 
             print("OpenRouter ERROR:")
             print(response.text[:3000])
