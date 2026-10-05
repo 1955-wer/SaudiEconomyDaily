@@ -2,7 +2,9 @@
   "model": "openrouter/auto",
   "max_turns": 8,
   "timeout_seconds": 420,
-  "max_candidates": 3,
+  "max_candidates": 8,
+  "discovery_limit": 12,
+  "discovery_turns": 10,
   "web_backend": "",
   "enabled": true,
   "fallback_to_legacy": true
