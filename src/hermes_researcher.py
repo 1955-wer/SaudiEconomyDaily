@@ -10,7 +10,9 @@ DEFAULT_MODEL = "openrouter/auto"
 DEFAULT_CONFIG_FILE = os.path.join("config", "hermes.json")
 DEFAULT_MAX_TURNS = 8
 DEFAULT_TIMEOUT_SECONDS = 420
-DEFAULT_MAX_CANDIDATES = 3
+DEFAULT_MAX_CANDIDATES = 8
+DEFAULT_DISCOVERY_LIMIT = 12
+DEFAULT_DISCOVERY_TURNS = 10
 
 ALLOWED_CATEGORIES = {
     "oil",
@@ -111,6 +113,8 @@ def load_config() -> dict[str, Any]:
         "max_turns": DEFAULT_MAX_TURNS,
         "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
         "max_candidates": DEFAULT_MAX_CANDIDATES,
+        "discovery_limit": DEFAULT_DISCOVERY_LIMIT,
+        "discovery_turns": DEFAULT_DISCOVERY_TURNS,
         "web_backend": "firecrawl",
         "enabled": True,
         "fallback_to_legacy": True,
@@ -133,6 +137,8 @@ def load_config() -> dict[str, Any]:
         "max_turns": "HERMES_MAX_TURNS",
         "timeout_seconds": "HERMES_TIMEOUT_SECONDS",
         "max_candidates": "HERMES_MAX_CANDIDATES",
+        "discovery_limit": "HERMES_DISCOVERY_LIMIT",
+        "discovery_turns": "HERMES_DISCOVERY_TURNS",
         "web_backend": "HERMES_WEB_BACKEND",
     }
 
@@ -142,7 +148,7 @@ def load_config() -> dict[str, Any]:
         if value not in (None, ""):
             config[key] = value
 
-    for key in ("max_turns", "timeout_seconds", "max_candidates"):
+    for key in ("max_turns", "timeout_seconds", "max_candidates", "discovery_limit", "discovery_turns"):
         try:
             config[key] = int(config[key])
         except (TypeError, ValueError):
@@ -150,6 +156,8 @@ def load_config() -> dict[str, Any]:
                 "max_turns": DEFAULT_MAX_TURNS,
                 "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
                 "max_candidates": DEFAULT_MAX_CANDIDATES,
+                "discovery_limit": DEFAULT_DISCOVERY_LIMIT,
+                "discovery_turns": DEFAULT_DISCOVERY_TURNS,
             }[key]
 
     mode = os.getenv("HERMES_ENABLED")
@@ -180,7 +188,17 @@ def load_config() -> dict[str, Any]:
 
     config["max_candidates"] = max(
         1,
-        min(10, int(config["max_candidates"]))
+        min(20, int(config["max_candidates"]))
+    )
+
+    config["discovery_limit"] = max(
+        4,
+        min(20, int(config["discovery_limit"]))
+    )
+
+    config["discovery_turns"] = max(
+        4,
+        min(20, int(config["discovery_turns"]))
     )
 
     config["model"] = (
@@ -771,6 +789,242 @@ def _extract_json_from_output(
         ].strip()
 
     return text
+
+
+DISCOVERY_SYSTEM_PROMPT = """
+أنت محرك اكتشاف الأخبار في Saudi Economy Daily، ولست مجرد محلل للقصص التي يرسلها لك النظام.
+
+المهمة: ابحث بنفسك على الويب عن أهم الأخبار الاقتصادية السعودية المنشورة خلال آخر 30 ساعة فقط، ثم أعد قائمة بالقصص الجديدة التي تستحق أن تدخل مرحلة التحقق والتحليل.
+
+قواعد إلزامية:
+1. استخدم web_search فعلياً، ولا تعتمد على المعرفة السابقة أو على قائمة RSS فقط.
+2. نفّذ عدة عمليات بحث متنوعة تغطي: النفط والطاقة، الأسواق وتاسي، البنوك والتمويل، الشركات والأرباح والاستحواذات، الاستثمار وصندوق الاستثمارات، الحكومة والقرارات الاقتصادية، العقار، السياحة، الصناعة والتعدين، التجارة واللوجستيات، التقنية والوظائف.
+3. أعط الأولوية للمصادر السعودية الرسمية والمصادر الاقتصادية الموثوقة ووكالات الأنباء العالمية، ثم المصادر المتخصصة.
+4. استخدم web_extract لقراءة صفحات الأخبار المهمة عندما يكون ذلك متاحاً.
+5. لا تُرجع قصة إلا إذا أمكن التحقق من أنها نُشرت خلال آخر 30 ساعة. يجب أن يكون published_at بصيغة ISO 8601 مع المنطقة الزمنية إذا كانت معلومة. إذا لم يمكن التحقق من وقت النشر، لا تدرج القصة.
+6. لا تكرر نفس الحدث من عدة مواقع. اجمع التغطيات في قصة واحدة واستخدم أفضل رابط أصلي أو أوثق رابط.
+7. يجب أن يكون للخبر صلة مباشرة بالاقتصاد السعودي أو تأثير اقتصادي واضح على السعودية.
+8. لا تخترع روابط أو أوقات نشر أو أسماء مصادر.
+9. ابحث عن قصص لم تكن موجودة في RSS أو قائمة المصادر الأولية؛ هذه هي القيمة الأساسية لهذه المرحلة.
+10. رتّب النتائج حسب الأهمية والحداثة، وأعد حتى العدد المطلوب إذا وجدت أخباراً كافية.
+
+أعد JSON فقط:
+{
+  "discoveries": [
+    {
+      "title": "عنوان الخبر",
+      "url": "https://...",
+      "source": "اسم المصدر",
+      "published_at": "2026-10-05T10:30:00+03:00",
+      "description": "وصف قصير من نتيجة البحث أو الصفحة",
+      "category": "oil",
+      "importance_hint": 85
+    }
+  ]
+}
+""";
+
+function build_discovery_prompt(
+    sources: list[dict[str, Any]],
+    limit: int,
+) -> str:
+    source_hints = []
+
+    for source in sources:
+        source_hints.append(
+            {
+                "name": str(source.get("name", ""))[:120],
+                "website": str(source.get("url", ""))[:250],
+                "type": str(source.get("type", ""))[:80],
+                "topics": source.get("topics", [])[:8]
+                    if isinstance(source.get("topics", []), list)
+                    else [],
+            }
+        )
+
+    now_utc = __import__("datetime").datetime.now(
+        __import__("datetime").timezone.utc
+    ).isoformat()
+
+    return f"""
+{DISCOVERY_SYSTEM_PROMPT}
+
+الوقت الحالي UTC:
+{now_utc}
+
+المصادر الموجودة في المشروع للاسترشاد بها، لكن لا تكتفِ بها:
+{json.dumps(source_hints, ensure_ascii=False, indent=2)}
+
+أقصى عدد نتائج:
+{limit}
+
+مهم: ابحث عن الأخبار بنفسك. لا تعتبر هذه القائمة مصدراً وحيداً للاكتشاف.
+""";
+
+def _parse_discoveries(text: str, limit: int) -> list[dict[str, Any]]:
+    payload = _extract_json_from_output(text)
+
+    if not payload:
+        return []
+
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+
+    raw = parsed.get("discoveries", []) if isinstance(parsed, dict) else []
+    if not isinstance(raw, list):
+        return []
+
+    results = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title", "")).strip()
+        url = str(item.get("url", "")).strip()
+        source = str(item.get("source", "")).strip()
+        published_at = str(item.get("published_at", "")).strip()
+        if not title or not url.startswith(("http://", "https://")):
+            continue
+        if not source or not published_at:
+            continue
+        try:
+            dt = __import__("datetime").datetime.fromisoformat(
+                published_at.replace("Z", "+00:00")
+            )
+            if dt.tzinfo is None:
+                continue
+            age = (
+                __import__("datetime").datetime.now(
+                    __import__("datetime").timezone.utc
+                ) - dt.astimezone(__import__("datetime").timezone.utc)
+            ).total_seconds() / 3600
+            if age < 0 or age > 30:
+                continue
+        except (TypeError, ValueError):
+            continue
+
+        results.append(
+            {
+                "title": title[:600],
+                "url": url[:500],
+                "source": source[:150],
+                "published_at": published_at[:80],
+                "description": str(item.get("description", "")).strip()[:2000],
+                "category": str(item.get("category", "economy")).strip()[:50],
+                "importance_hint": max(0, min(100, _as_int(item.get("importance_hint"), 0))),
+            }
+        )
+        if len(results) >= limit:
+            break
+
+    return results
+
+
+def discover_articles(
+    sources: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    config = load_config()
+
+    if not config["enabled"]:
+        return []
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        print("Hermes discovery unavailable: OPENROUTER_API_KEY is missing.")
+        return []
+
+    binary = find_hermes_binary()
+    if not binary:
+        print("Hermes discovery unavailable: hermes executable was not found.")
+        return []
+
+    prompt = build_discovery_prompt(
+        sources or [],
+        config["discovery_limit"],
+    )
+
+    runtime_home = tempfile.mkdtemp(prefix="saudi-economy-hermes-discovery-")
+    env = os.environ.copy()
+    env["OPENROUTER_API_KEY"] = api_key
+    env["HERMES_HOME"] = runtime_home
+    _write_runtime_config(config, runtime_home)
+
+    command = [
+        binary, "chat", "--oneshot", "--query-file", "-",
+        "--provider", "openrouter",
+        "--model", config["model"],
+        "--toolsets", "web",
+        "--max-turns", str(config["discovery_turns"]),
+    ]
+
+    print("Starting Hermes news discovery...")
+    print(f"Hermes discovery limit: {config['discovery_limit']}")
+
+    try:
+        completed = subprocess.run(
+            command,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            timeout=config["timeout_seconds"],
+            env=env,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        print("Hermes discovery timed out.")
+        shutil.rmtree(runtime_home, ignore_errors=True)
+        return []
+    except OSError as error:
+        print(f"Hermes discovery execution error: {error}")
+        shutil.rmtree(runtime_home, ignore_errors=True)
+        return []
+
+    stdout = (completed.stdout or "").strip()
+    stderr = (completed.stderr or "").strip()
+
+    if completed.returncode != 0:
+        print(f"Hermes discovery exit code: {completed.returncode}")
+        print("===== HERMES DISCOVERY STDERR =====")
+        print(stderr[-8000:] if stderr else "(empty)")
+        print("===== HERMES DISCOVERY STDOUT =====")
+        print(stdout[-8000:] if stdout else "(empty)")
+        shutil.rmtree(runtime_home, ignore_errors=True)
+        return []
+
+    if stderr:
+        print(f"Hermes discovery diagnostics: {stderr[-2000:]}")
+
+    discoveries = _parse_discoveries(stdout, config["discovery_limit"])
+    print(f"Hermes discovered {len(discoveries)} recent candidate(s).")
+
+    shutil.rmtree(runtime_home, ignore_errors=True)
+    return discoveries
+
+
+def discoveries_to_articles(
+    discoveries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    articles = []
+    for item in discoveries:
+        title = item["title"]
+        url = item["url"]
+        articles.append(
+            {
+                "id": __import__("hashlib").sha256(
+                    f"{title}|{url}".encode("utf-8")
+                ).hexdigest(),
+                "title": title,
+                "url": url,
+                "content": item.get("description") or title,
+                "source": item["source"],
+                "source_type": "hermes_web",
+                "default_content_type": "news",
+                "priority": max(1, int(item.get("importance_hint", 0)) // 20),
+                "published_at": item["published_at"],
+            }
+        )
+    return articles
 
 
 def research_articles(
