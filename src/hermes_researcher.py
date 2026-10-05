@@ -1,8 +1,10 @@
 import json
 import os
+import hashlib
 import shutil
 import subprocess
 import tempfile
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -842,9 +844,7 @@ function build_discovery_prompt(
             }
         )
 
-    now_utc = __import__("datetime").datetime.now(
-        __import__("datetime").timezone.utc
-    ).isoformat()
+    now_utc = datetime.now(timezone.utc).isoformat()
 
     return f"""
 {DISCOVERY_SYSTEM_PROMPT}
@@ -889,15 +889,13 @@ def _parse_discoveries(text: str, limit: int) -> list[dict[str, Any]]:
         if not source or not published_at:
             continue
         try:
-            dt = __import__("datetime").datetime.fromisoformat(
+            dt = datetime.fromisoformat(
                 published_at.replace("Z", "+00:00")
             )
             if dt.tzinfo is None:
                 continue
             age = (
-                __import__("datetime").datetime.now(
-                    __import__("datetime").timezone.utc
-                ) - dt.astimezone(__import__("datetime").timezone.utc)
+                datetime.now(timezone.utc) - dt.astimezone(timezone.utc)
             ).total_seconds() / 3600
             if age < 0 or age > 30:
                 continue
@@ -1011,7 +1009,7 @@ def discoveries_to_articles(
         url = item["url"]
         articles.append(
             {
-                "id": __import__("hashlib").sha256(
+                "id": hashlib.sha256(
                     f"{title}|{url}".encode("utf-8")
                 ).hexdigest(),
                 "title": title,
