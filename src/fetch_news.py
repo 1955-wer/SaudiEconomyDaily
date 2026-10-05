@@ -20,7 +20,13 @@ except ImportError:
     PdfReader = None
 
 from ai_editor import analyze_articles
-from hermes_researcher import research_articles, load_config as load_hermes_config, supporting_source_names
+from hermes_researcher import (
+    research_articles,
+    discover_articles,
+    discoveries_to_articles,
+    load_config as load_hermes_config,
+    supporting_source_names,
+)
 
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -38,7 +44,7 @@ STATE_FILE = os.path.join(
 )
 
 MAX_ARTICLES_PER_SOURCE = 10
-MAX_CANDIDATES_PER_RUN = 6
+MAX_CANDIDATES_PER_RUN = 8
 MAX_ITEMS_PER_NEWSLETTER = 3
 
 # 3 newsletters × 3 items = 9 items on a normal day.
@@ -1627,6 +1633,34 @@ def main():
     )
     print("=" * 60)
 
+    # Hermes is the primary discovery engine. The legacy source collector
+    # remains intact as an independent fallback and also contributes coverage.
+    hermes_mode = get_news_processor_mode() == "hermes"
+
+    if hermes_mode:
+        try:
+            discoveries = discover_articles(sources)
+            discovered_articles = discoveries_to_articles(discoveries)
+
+            for article in discovered_articles:
+                aid = article["id"]
+                normalized = title_key(article["title"])
+
+                if aid in published or aid in daily["ids"] or aid in seen_ids:
+                    continue
+                if normalized and normalized in seen_titles:
+                    continue
+
+                seen_ids.add(aid)
+                if normalized:
+                    seen_titles.add(normalized)
+                all_articles.append(article)
+
+            print(f"Hermes discovery added: {len(discovered_articles)}")
+            print(f"TOTAL DISCOVERY CANDIDATES: {len(all_articles)}")
+        except Exception as error:
+            print(f"Hermes discovery failed; using legacy discovery: {error}")
+
     if not all_articles:
         save_state(state)
 
@@ -1672,6 +1706,10 @@ def main():
     candidates = select_candidates(
         fresh_candidates,
         MAX_CANDIDATES_PER_RUN,
+    )
+
+    print(
+        f"Selected candidates for deep analysis: {len(candidates)}"
     )
 
     # Only the small candidate set gets full page/PDF extraction.
