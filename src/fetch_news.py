@@ -20,13 +20,41 @@ except ImportError:
     PdfReader = None
 
 from ai_editor import analyze_articles
-from hermes_researcher import (
-    research_articles,
-    discover_articles,
-    discoveries_to_articles,
-    load_config as load_hermes_config,
-    supporting_source_names,
-)
+
+# Hermes is intentionally optional: a broken Hermes install/module must never
+# prevent the independent legacy AI editor from publishing the newsletter.
+HERMES_AVAILABLE = True
+
+try:
+    from hermes_researcher import (
+        research_articles,
+        discover_articles,
+        discoveries_to_articles,
+        load_config as load_hermes_config,
+        supporting_source_names,
+    )
+except Exception as error:
+    HERMES_AVAILABLE = False
+    print(f"WARNING: Hermes layer unavailable; legacy path remains active: {error}")
+
+    def load_hermes_config():
+        return {
+            "enabled": False,
+            "fallback_to_legacy": True,
+            "max_candidates": 3,
+        }
+
+    def research_articles(*args, **kwargs):
+        return {}
+
+    def discover_articles(*args, **kwargs):
+        return []
+
+    def discoveries_to_articles(*args, **kwargs):
+        return []
+
+    def supporting_source_names(*args, **kwargs):
+        return []
 
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -949,6 +977,9 @@ def get_news_processor_mode():
     mode = os.getenv("NEWS_PROCESSOR")
     if mode:
         return mode.strip().lower()
+
+    if not HERMES_AVAILABLE:
+        return "legacy"
 
     config = load_hermes_config()
     if config.get("enabled", True):
