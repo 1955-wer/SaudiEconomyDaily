@@ -826,7 +826,7 @@ DISCOVERY_SYSTEM_PROMPT = """
 }
 """;
 
-function build_discovery_prompt(
+def build_discovery_prompt(
     sources: list[dict[str, Any]],
     limit: int,
 ) -> str:
