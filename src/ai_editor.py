@@ -1,13 +1,14 @@
 import os
 import json
+import os
 import time
 import requests
 
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL = os.getenv("LEGACY_MODEL", "openai/gpt-oss-120b").strip() or "openai/gpt-oss-120b"
-FALLBACK_MODEL = os.getenv("LEGACY_FALLBACK_MODEL", "openai/gpt-oss-20b").strip() or "openai/gpt-oss-20b"
+APINEX_API_KEY = os.getenv("APINEX_API_KEY")
+API_URL = os.getenv("APINEX_BASE_URL", "https://api.apinex.bond/v1").rstrip("/") + "/chat/completions"
+MODEL = os.getenv("LEGACY_MODEL", "free/glm-5.3-flash").strip() or "free/glm-5.3-flash"
+FALLBACK_MODEL = os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro").strip() or "free/mimo-v2.6-pro"
 
 MAX_RETRIES = 2
 
@@ -208,8 +209,8 @@ def arabic_ratio(text):
 
 
 def analyze_articles(articles):
-    if not GROQ_API_KEY:
-        print("ERROR: GROQ_API_KEY is missing")
+    if not APINEX_API_KEY:
+        print("ERROR: APINEX_API_KEY is missing")
         return {}
 
     if not articles:
@@ -268,7 +269,7 @@ def analyze_articles(articles):
 """
 
         headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Authorization": f"Bearer {APINEX_API_KEY}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
             "X-Title": "Saudi Economy Daily",
@@ -286,20 +287,20 @@ def analyze_articles(articles):
 
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                print(f"Groq attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
+                print(f"APInex attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
                 response = requests.post(
                     API_URL,
                     headers=headers,
                     json=payload,
                     timeout=120,
                 )
-                print(f"Groq status: {response.status_code}")
+                print(f"APInex status: {response.status_code}")
 
                 if response.ok:
                     data = response.json()
                     choices = data.get("choices", [])
                     if not choices:
-                        print("ERROR: Groq returned no choices")
+                        print("ERROR: APInex returned no choices")
                     else:
                         text = clean_json_text(
                             choices[0].get("message", {}).get("content", "")
@@ -322,21 +323,21 @@ def analyze_articles(articles):
                                         continue
                                     return normalized
                         except json.JSONDecodeError:
-                            print("ERROR: Groq returned invalid JSON")
+                            print("ERROR: APInex returned invalid JSON")
                 elif response.status_code in (413, 429, 500, 502, 503, 504):
-                    print(f"Groq transient/limit error: {response.status_code}")
+                    print(f"APInex transient/limit error: {response.status_code}")
                 elif response.status_code in (401, 403, 404):
-                    print(f"Groq model/auth error: {response.status_code}")
+                    print(f"APInex model/auth error: {response.status_code}")
                     return None
                 else:
-                    print("Groq ERROR:")
+                    print("APInex ERROR:")
                     print(response.text[:2000])
                     return None
 
             except requests.Timeout:
-                print("Groq request timed out.")
+                print("APInex request timed out.")
             except requests.RequestException as error:
-                print(f"Groq network error: {error}")
+                print(f"APInex network error: {error}")
             except Exception as error:
                 print(f"Unexpected Groq error: {error}")
 
