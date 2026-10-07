@@ -1,6 +1,8 @@
 {
-  "model": "gemini-3.5-flash-lite",
-  "provider": "gemini",
+  "model": "free/deepseek-v4-pro-0813",
+  "provider": "custom",
+  "base_url": "https://api.apinex.bond/v1",
+  "key_env": "APINEX_API_KEY",
   "max_turns": 8,
   "timeout_seconds": 420,
   "max_candidates": 8,
