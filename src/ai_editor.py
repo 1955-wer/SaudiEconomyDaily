@@ -4,10 +4,10 @@ import time
 import requests
 
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free"
-FALLBACK_MODEL = "openrouter/free"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL = os.getenv("LEGACY_MODEL", "openai/gpt-oss-120b").strip() or "openai/gpt-oss-120b"
+FALLBACK_MODEL = os.getenv("LEGACY_FALLBACK_MODEL", "openai/gpt-oss-20b").strip() or "openai/gpt-oss-20b"
 
 MAX_RETRIES = 2
 
@@ -198,18 +198,25 @@ def normalize_result(item):
     }
 
 
+def arabic_ratio(text):
+    text = str(text or "")
+    letters = [ch for ch in text if ch.isalpha()]
+    if not letters:
+        return 0.0
+    arabic = sum("\u0600" <= ch <= "\u06ff" for ch in letters)
+    return arabic / len(letters)
+
+
 def analyze_articles(articles):
-    if not OPENROUTER_API_KEY:
-        print("ERROR: OPENROUTER_API_KEY is missing")
+    if not GROQ_API_KEY:
+        print("ERROR: GROQ_API_KEY is missing")
         return {}
 
     if not articles:
         return {}
 
-    prepared = []
-
-    for article in articles:
-        prepared.append({
+    def analyze_one(article, model):
+        prepared = {
             "id": str(article.get("id", "")),
             "title": str(article.get("title", ""))[:500],
             "source": str(article.get("source", ""))[:150],
@@ -217,135 +224,140 @@ def analyze_articles(articles):
             "default_content_type": str(article.get("default_content_type", "news")),
             "url": str(article.get("url", "")),
             "content": str(article.get("content", ""))[:12000],
-        })
+        }
 
-    user_prompt = f"""
-حلل العناصر التالية واختر منها ما يصلح لنشرة اقتصادية.
-نريد ملخصاً غنياً بالمعلومات لكنه ليس مقالة طويلة.
-استخرج أكبر قدر ممكن من المعلومات المهمة الموجودة فعلاً في النص، خصوصاً الأرقام والقيم والنسب والتواريخ والأطراف والسياق المباشر.
-لا تكرر المعلومة نفسها بصيغ مختلفة، ولا تضف أي معلومة غير موجودة في المادة.
+        user_prompt = f"""
+حلل الخبر التالي واختر هل يستحق النشر في نشرة اقتصادية عن السعودية.
+المصدر قد يكون عربياً أو إنجليزياً أو بلغة أخرى.
 
-العناصر:
+مهم جداً:
+- إذا كان المصدر أو عنوانه أو محتواه بالإنجليزية، يجب أن تكون النتيجة النهائية بالعربية الفصحى: العنوان والملخص و"لماذا يهم" و"أبرز المعلومات" كلها بالعربية.
+- لا تمنع الخبر بسبب كون المصدر إنجليزياً.
+- اسم المصدر نفسه يجب أن يبقى كما هو، ولا تترجم اسم المصدر.
+- لا تترجم أو تغيّر رابط الخبر.
+- أسماء الشركات والمؤشرات والجهات العالمية يمكن إبقاؤها بالإنجليزية عند الحاجة داخل نص عربي.
+- لا تستخدم أي معلومة غير موجودة في المادة.
+- لا تختلق أرقاماً أو تواريخ أو اقتباسات.
+- إذا كانت المادة قصيرة، اذكر فقط ما تؤكده.
+- الملخص 3 إلى 4 جمل قصيرة وغنية بالمعلومات، مع الأرقام والنسب والتواريخ والأطراف والسياق المباشر المتاح.
+- "why_it_matters" من 2 إلى 3 جمل قصيرة.
+- "key_facts" من 3 إلى 4 نقاط عند توفرها.
+
+المادة:
 {json.dumps(prepared, ensure_ascii=False, indent=2)}
 
-أعد نتيجة لكل id موجود.
+أعد JSON فقط:
+{{
+  "results": [
+    {{
+      "id": "{prepared["id"]}",
+      "publish": true,
+      "importance": 82,
+      "confidence": 90,
+      "content_type": "news",
+      "category": "investment",
+      "market_impact": "neutral",
+      "headline": "عنوان عربي",
+      "summary": "ملخص عربي غني بالمعلومات.",
+      "why_it_matters": "أهمية الخبر بالعربية.",
+      "affected_entities": ["جهة أو شركة"],
+      "key_facts": ["معلومة مهمة", "معلومة مهمة"]
+    }}
+  ]
+}}
 """
 
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
-        "X-OpenRouter-Title": "Saudi Economy Daily",
-    }
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
+            "X-Title": "Saudi Economy Daily",
+        }
 
-    payload = {
-        "model": MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        "temperature": 0.1,
-        "max_tokens": 5200,
-    }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT + "\n\nإذا كان المصدر إنجليزياً، ترجم المحتوى إلى العربية في الحقول النهائية مع إبقاء اسم المصدر والرابط كما هما."},
+                {"role": "user", "content": user_prompt},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 2200,
+        }
 
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            print(f"OpenRouter attempt {attempt}/{MAX_RETRIES}")
-            print(f"Batch size: {len(articles)}")
-
-            response = requests.post(
-                API_URL,
-                headers=headers,
-                json=payload,
-                timeout=120,
-            )
-
-            print(f"OpenRouter status: {response.status_code}")
-
-            if response.ok:
-                data = response.json()
-                choices = data.get("choices", [])
-
-                if not choices:
-                    print("ERROR: OpenRouter returned no choices")
-                    if attempt < MAX_RETRIES:
-                        time.sleep(3)
-                        continue
-                    return {}
-
-                text = choices[0].get("message", {}).get("content", "")
-                text = clean_json_text(text)
-
-                try:
-                    parsed = json.loads(text)
-                except json.JSONDecodeError:
-                    print("ERROR: AI returned invalid JSON")
-                    print(text[:4000])
-                    if attempt < MAX_RETRIES:
-                        time.sleep(3)
-                        continue
-                    return {}
-
-                results = {}
-                raw = parsed.get("results", [])
-
-                if isinstance(raw, list):
-                    for item in raw:
-                        normalized = normalize_result(item)
-                        if normalized:
-                            results[normalized["id"]] = normalized
-
-                return results
-
-            if response.status_code == 429:
-                print("OpenRouter rate limit reached.")
-                if attempt < MAX_RETRIES:
-                    time.sleep(attempt * 5)
-                    continue
-                return {}
-
-            if response.status_code >= 500:
-                print("OpenRouter server error:")
-                print(response.text[:2000])
-                if attempt < MAX_RETRIES:
-                    time.sleep(attempt * 5)
-                    continue
-                return {}
-
-            # Model slugs can become unavailable or leave the free tier.
-            # Recover automatically by switching to OpenRouter's current
-            # free-model router instead of aborting the whole newsletter run.
-            if response.status_code == 404 and payload.get("model") != FALLBACK_MODEL:
-                print(
-                    f"OpenRouter model unavailable: {payload.get('model')}. "
-                    f"Retrying with {FALLBACK_MODEL}."
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                print(f"Groq attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
+                response = requests.post(
+                    API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=120,
                 )
-                payload["model"] = FALLBACK_MODEL
-                continue
+                print(f"Groq status: {response.status_code}")
 
-            print("OpenRouter ERROR:")
-            print(response.text[:3000])
-            return {}
+                if response.ok:
+                    data = response.json()
+                    choices = data.get("choices", [])
+                    if not choices:
+                        print("ERROR: Groq returned no choices")
+                    else:
+                        text = clean_json_text(
+                            choices[0].get("message", {}).get("content", "")
+                        )
+                        try:
+                            parsed = json.loads(text)
+                            raw = parsed.get("results", []) if isinstance(parsed, dict) else []
+                            if isinstance(raw, list):
+                                for item in raw:
+                                    normalized = normalize_result(item)
+                                    if not normalized:
+                                        continue
+                                    combined = " ".join([
+                                        normalized.get("headline", ""),
+                                        normalized.get("summary", ""),
+                                        normalized.get("why_it_matters", ""),
+                                    ])
+                                    if arabic_ratio(combined) < 0.20:
+                                        print("ERROR: Groq output was not sufficiently Arabic; rejecting result.")
+                                        continue
+                                    return normalized
+                        except json.JSONDecodeError:
+                            print("ERROR: Groq returned invalid JSON")
+                elif response.status_code in (413, 429, 500, 502, 503, 504):
+                    print(f"Groq transient/limit error: {response.status_code}")
+                elif response.status_code in (401, 403, 404):
+                    print(f"Groq model/auth error: {response.status_code}")
+                    return None
+                else:
+                    print("Groq ERROR:")
+                    print(response.text[:2000])
+                    return None
 
-        except requests.Timeout:
-            print("OpenRouter request timed out.")
+            except requests.Timeout:
+                print("Groq request timed out.")
+            except requests.RequestException as error:
+                print(f"Groq network error: {error}")
+            except Exception as error:
+                print(f"Unexpected Groq error: {error}")
+
             if attempt < MAX_RETRIES:
-                time.sleep(3)
-                continue
-            return {}
+                time.sleep(attempt * 3)
 
-        except requests.RequestException as error:
-            print(f"OpenRouter network error: {error}")
-            if attempt < MAX_RETRIES:
-                time.sleep(3)
-                continue
-            return {}
+        return None
 
-        except Exception as error:
-            print(f"Unexpected AI error: {error}")
-            return {}
+    results = {}
 
-    return {}
+    for article in articles:
+        result = analyze_one(article, MODEL)
+
+        if result is None and FALLBACK_MODEL and FALLBACK_MODEL != MODEL:
+            print(f"Legacy model fallback: {MODEL} -> {FALLBACK_MODEL}")
+            result = analyze_one(article, FALLBACK_MODEL)
+
+        if result:
+            results[result["id"]] = result
+
+    return results
 
 
 def analyze_article(article):
