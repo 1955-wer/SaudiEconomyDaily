@@ -1108,6 +1108,54 @@ def run_news_processor(candidates, sources):
     return {}, "both_failed"
 
 
+def build_emergency_results(candidates, slots):
+    """
+    Deterministic last-resort publisher.
+
+    No AI is used here. We preserve the source title, source name and URL,
+    and use the source/RSS excerpt as-is when available. This guarantees
+    that a provider outage cannot block all publishing, but it does not
+    claim to translate or fact-check English text.
+    """
+    results = {}
+
+    for article in candidates[:max(1, slots)]:
+        article_id = str(article.get("id", "")).strip()
+        title = clean_text(article.get("title", ""))
+        content = clean_text(article.get("content", ""))
+        source = clean_text(article.get("source", ""))
+
+        if not article_id or not title:
+            continue
+
+        excerpt = content[:900].strip()
+        if not excerpt:
+            excerpt = "تعذر إنشاء ملخص آلي بسبب تعطل محركات الذكاء الاصطناعي. يرجى الرجوع إلى المصدر الأصلي عبر الرابط أدناه."
+
+        results[article_id] = {
+            "id": article_id,
+            "publish": True,
+            "research_performed": False,
+            "duplicate_of": None,
+            "importance": 68,
+            "confidence": 50,
+            "content_type": article.get("default_content_type", "news"),
+            "category": "economy",
+            "market_impact": "unknown",
+            "headline": title,
+            "summary": excerpt,
+            "why_it_matters": "نشر احتياطي مباشر من المادة المتاحة في المصدر دون إضافة معلومات غير متحقق منها.",
+            "affected_entities": [],
+            "key_facts": [],
+            "supporting_sources": [],
+            "emergency_fallback": True,
+            "source_language": "original",
+            "source_name": source,
+        }
+
+    return results
+
+
 def split_telegram_message(message):
     if len(message) <= TELEGRAM_MAX_LENGTH:
         return [message]
@@ -1776,12 +1824,9 @@ def main():
     )
 
     if not results:
-        print(
-            "AI research/analysis failed."
-        )
-
-        save_state(state)
-        return
+        print("AI research/analysis failed; activating deterministic emergency fallback.")
+        results = build_emergency_results(candidates, slots)
+        processor_used = "emergency_source_only"
 
     chosen = choose_publishable(
         candidates,
