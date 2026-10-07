@@ -934,9 +934,9 @@ def discover_articles(
     if not config["enabled"]:
         return []
 
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        print("Hermes discovery unavailable: OPENROUTER_API_KEY is missing.")
+        print("Hermes discovery unavailable: GEMINI_API_KEY/GOOGLE_API_KEY is missing.")
         return []
 
     binary = find_hermes_binary()
@@ -951,7 +951,7 @@ def discover_articles(
 
     runtime_home = tempfile.mkdtemp(prefix="saudi-economy-hermes-discovery-")
     env = os.environ.copy()
-    env["OPENROUTER_API_KEY"] = api_key
+    env["GEMINI_API_KEY"] = api_key
     env["HERMES_HOME"] = runtime_home
     _write_runtime_config(config, runtime_home)
 
@@ -1045,14 +1045,12 @@ def research_articles(
         )
         return {}
 
-    api_key = os.getenv(
-        "OPENROUTER_API_KEY"
-    )
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
     if not api_key:
         print(
             "Hermes research unavailable: "
-            "OPENROUTER_API_KEY is missing."
+            "GEMINI_API_KEY/GOOGLE_API_KEY is missing."
         )
         return {}
 
@@ -1083,7 +1081,7 @@ def research_articles(
 
     env = os.environ.copy()
 
-    env["OPENROUTER_API_KEY"] = api_key
+    env["GEMINI_API_KEY"] = api_key
     env["HERMES_HOME"] = runtime_home
 
     _write_runtime_config(
