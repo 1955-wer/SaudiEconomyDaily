@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-DEFAULT_MODEL = "openrouter/auto"
+DEFAULT_MODEL = "gemini-3.7-flash"
 DEFAULT_CONFIG_FILE = os.path.join("config", "hermes.json")
 DEFAULT_MAX_TURNS = 8
 DEFAULT_TIMEOUT_SECONDS = 420
@@ -112,6 +112,7 @@ RESEARCH_SYSTEM_PROMPT = """
 def load_config() -> dict[str, Any]:
     config: dict[str, Any] = {
         "model": DEFAULT_MODEL,
+        "provider": "gemini",
         "max_turns": DEFAULT_MAX_TURNS,
         "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
         "max_candidates": DEFAULT_MAX_CANDIDATES,
@@ -136,6 +137,7 @@ def load_config() -> dict[str, Any]:
 
     env_map = {
         "model": "HERMES_MODEL",
+        "provider": "HERMES_PROVIDER",
         "max_turns": "HERMES_MAX_TURNS",
         "timeout_seconds": "HERMES_TIMEOUT_SECONDS",
         "max_candidates": "HERMES_MAX_CANDIDATES",
@@ -206,6 +208,11 @@ def load_config() -> dict[str, Any]:
     config["model"] = (
         str(config["model"]).strip()
         or DEFAULT_MODEL
+    )
+
+    config["provider"] = (
+        str(config.get("provider", "gemini")).strip()
+        or "gemini"
     )
 
     config["web_backend"] = str(
@@ -644,7 +651,7 @@ def _write_runtime_config(
 
     lines = [
         "model:",
-        "  provider: openrouter",
+        f"  provider: {json.dumps(config.get('provider', 'gemini'))}",
         f"  default: {json.dumps(config['model'], ensure_ascii=False)}",
     ]
 
@@ -950,7 +957,7 @@ def discover_articles(
 
     command = [
         binary, "chat", "--oneshot", "--query-file", "-",
-        "--provider", "openrouter",
+        "--provider", config.get("provider", "gemini"),
         "--model", config["model"],
         "--toolsets", "web",
         "--max-turns", str(config["discovery_turns"]),
@@ -1091,7 +1098,7 @@ def research_articles(
         "--query-file",
         "-",
         "--provider",
-        "openrouter",
+        config.get("provider", "gemini"),
         "--model",
         config["model"],
         "--toolsets",
