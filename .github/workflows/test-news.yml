@@ -59,10 +59,12 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          APINEX_API_KEY: ${{ secrets.APINEX_API_KEY }}
+          APINEX_BASE_URL: ${{ secrets.APINEX_BASE_URL }}
           HERMES_PROVIDER: ${{ secrets.HERMES_PROVIDER }}
           HERMES_MODEL: ${{ secrets.HERMES_MODEL }}
+          HERMES_BASE_URL: ${{ secrets.HERMES_BASE_URL }}
+          HERMES_KEY_ENV: ${{ secrets.HERMES_KEY_ENV }}
           LEGACY_MODEL: ${{ secrets.LEGACY_MODEL }}
           LEGACY_FALLBACK_MODEL: ${{ secrets.LEGACY_FALLBACK_MODEL }}
           HERMES_WEB_BACKEND: ${{ secrets.HERMES_WEB_BACKEND }}
