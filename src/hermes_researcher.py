@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-DEFAULT_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_MODEL = "free/deepseek-v4-pro-0813"
 DEFAULT_CONFIG_FILE = os.path.join("config", "hermes.json")
 DEFAULT_MAX_TURNS = 8
 DEFAULT_TIMEOUT_SECONDS = 420
@@ -116,7 +116,9 @@ RESEARCH_SYSTEM_PROMPT = """
 def load_config() -> dict[str, Any]:
     config: dict[str, Any] = {
         "model": DEFAULT_MODEL,
-        "provider": "gemini",
+        "provider": "custom",
+        "base_url": "https://api.apinex.bond/v1",
+        "key_env": "APINEX_API_KEY",
         "max_turns": DEFAULT_MAX_TURNS,
         "timeout_seconds": DEFAULT_TIMEOUT_SECONDS,
         "max_candidates": DEFAULT_MAX_CANDIDATES,
@@ -142,6 +144,8 @@ def load_config() -> dict[str, Any]:
     env_map = {
         "model": "HERMES_MODEL",
         "provider": "HERMES_PROVIDER",
+        "base_url": "HERMES_BASE_URL",
+        "key_env": "HERMES_KEY_ENV",
         "max_turns": "HERMES_MAX_TURNS",
         "timeout_seconds": "HERMES_TIMEOUT_SECONDS",
         "max_candidates": "HERMES_MAX_CANDIDATES",
@@ -215,9 +219,12 @@ def load_config() -> dict[str, Any]:
     )
 
     config["provider"] = (
-        str(config.get("provider", "gemini")).strip()
-        or "gemini"
+        str(config.get("provider", "custom")).strip()
+        or "custom"
     )
+
+    config["base_url"] = str(config.get("base_url", "https://api.apinex.bond/v1")).strip() or "https://api.apinex.bond/v1"
+    config["key_env"] = str(config.get("key_env", "APINEX_API_KEY")).strip() or "APINEX_API_KEY"
 
     config["web_backend"] = str(
         config.get("web_backend", "")
@@ -655,7 +662,9 @@ def _write_runtime_config(
 
     lines = [
         "model:",
-        f"  provider: {json.dumps(config.get('provider', 'gemini'))}",
+        f"  provider: {json.dumps(config.get('provider', 'custom'))}",
+        f"  base_url: {json.dumps(config.get('base_url', 'https://api.apinex.bond/v1'))}",
+        f"  key_env: {json.dumps(config.get('key_env', 'APINEX_API_KEY'))}",
         f"  default: {json.dumps(config['model'], ensure_ascii=False)}",
     ]
 
@@ -938,9 +947,9 @@ def discover_articles(
     if not config["enabled"]:
         return []
 
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv(config.get("key_env", "APINEX_API_KEY"))
     if not api_key:
-        print("Hermes discovery unavailable: GEMINI_API_KEY/GOOGLE_API_KEY is missing.")
+        print("Hermes discovery unavailable: APINEX_API_KEY is missing.")
         return []
 
     binary = find_hermes_binary()
@@ -955,13 +964,13 @@ def discover_articles(
 
     runtime_home = tempfile.mkdtemp(prefix="saudi-economy-hermes-discovery-")
     env = os.environ.copy()
-    env["GEMINI_API_KEY"] = api_key
+    env[config.get("key_env", "APINEX_API_KEY")] = api_key
     env["HERMES_HOME"] = runtime_home
     _write_runtime_config(config, runtime_home)
 
     command = [
         binary, "chat", "--oneshot", "--query-file", "-",
-        "--provider", config.get("provider", "gemini"),
+        "--provider", config.get("provider", "custom"),
         "--model", config["model"],
         "--toolsets", "web",
         "--max-turns", str(config["discovery_turns"]),
@@ -1100,7 +1109,7 @@ def research_articles(
         "--query-file",
         "-",
         "--provider",
-        config.get("provider", "gemini"),
+        config.get("provider", "custom"),
         "--model",
         config["model"],
         "--toolsets",
