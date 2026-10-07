@@ -324,7 +324,7 @@ def analyze_articles(articles):
                                     return normalized
                         except json.JSONDecodeError:
                             print("ERROR: APInex returned invalid JSON")
-                elif response.status_code in (413, 429, 500, 502, 503, 504):
+                elif response.status_code in (402, 413, 429, 500, 502, 503, 504):
                     print(f"APInex transient/limit error: {response.status_code}")
                 elif response.status_code in (401, 403, 404):
                     print(f"APInex model/auth error: {response.status_code}")
