@@ -49,8 +49,10 @@ jobs:
 
       - name: Install Hermes Agent
         run: |
-          curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive --skip-browser --skip-computer-use
+          curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive --skip-browser --skip-computer-use || true
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.local/bin:$PATH"
+          command -v hermes
           hermes --version
 
       - name: Fetch, analyze and publish
