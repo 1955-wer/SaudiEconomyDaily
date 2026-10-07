@@ -1,5 +1,6 @@
 {
-  "model": "openrouter/auto",
+  "model": "gemini-3.7-flash",
+  "provider": "gemini",
   "max_turns": 8,
   "timeout_seconds": 420,
   "max_candidates": 8,
