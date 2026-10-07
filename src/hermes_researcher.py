@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 
-DEFAULT_MODEL = "gemini-3.7-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"
 DEFAULT_CONFIG_FILE = os.path.join("config", "hermes.json")
 DEFAULT_MAX_TURNS = 8
 DEFAULT_TIMEOUT_SECONDS = 420
