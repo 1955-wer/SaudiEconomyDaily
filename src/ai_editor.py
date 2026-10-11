@@ -1,12 +1,12 @@
 import os
 import json
-import os
 import time
 import requests
 
 
 APINEX_API_KEY = os.getenv("APINEX_API_KEY")
-API_URL = os.getenv("APINEX_BASE_URL", "https://api.apinex.bond/v1").rstrip("/") + "/chat/completions"
+API_BASE_URL = (os.getenv("APINEX_BASE_URL") or "https://api.apinex.bond/v1").strip().rstrip("/")
+API_URL = API_BASE_URL + "/chat/completions"
 MODEL = os.getenv("LEGACY_MODEL", "free/glm-5.3-flash").strip() or "free/glm-5.3-flash"
 FALLBACK_MODEL = os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro").strip() or "free/mimo-v2.6-pro"
 
@@ -319,7 +319,7 @@ def analyze_articles(articles):
                                         normalized.get("why_it_matters", ""),
                                     ])
                                     if arabic_ratio(combined) < 0.20:
-                                        print("ERROR: Groq output was not sufficiently Arabic; rejecting result.")
+                                        print("ERROR: APInex output was not sufficiently Arabic; rejecting result.")
                                         continue
                                     return normalized
                         except json.JSONDecodeError:
@@ -339,7 +339,7 @@ def analyze_articles(articles):
             except requests.RequestException as error:
                 print(f"APInex network error: {error}")
             except Exception as error:
-                print(f"Unexpected Groq error: {error}")
+                print(f"Unexpected APInex error: {error}")
 
             if attempt < MAX_RETRIES:
                 time.sleep(attempt * 3)
