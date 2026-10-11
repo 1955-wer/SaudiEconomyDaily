@@ -4,7 +4,7 @@ import time
 import requests
 
 
-APINEX_API_KEY = os.getenv("APINEX_API_KEY")
+APINEX_API_KEY = (os.getenv("APINEX_API_KEY") or "").strip()
 API_BASE_URL = (os.getenv("APINEX_BASE_URL") or "https://api.apinex.bond/v1").strip().rstrip("/")
 API_URL = API_BASE_URL + "/chat/completions"
 MODEL = os.getenv("LEGACY_MODEL", "free/glm-5.3-flash").strip() or "free/glm-5.3-flash"
@@ -324,13 +324,18 @@ def analyze_articles(articles):
                                     return normalized
                         except json.JSONDecodeError:
                             print("ERROR: APInex returned invalid JSON")
-                elif response.status_code in (402, 413, 429, 500, 502, 503, 504):
-                    print(f"APInex transient/limit error: {response.status_code}")
-                elif response.status_code in (401, 403, 404):
-                    print(f"APInex model/auth error: {response.status_code}")
+                elif response.status_code in (402, 403, 401, 404, 413):
+                    # These are usually account/model/configuration gates, not transient
+                    # network failures. Log the provider's diagnostic and move to the
+                    # next configured model instead of retrying the same request.
+                    print(f"APInex non-retryable account/model error: HTTP {response.status_code}")
+                    print(f"APInex diagnostic: {response.text[:1500]}")
                     return None
+                elif response.status_code in (429, 500, 502, 503, 504):
+                    print(f"APInex transient/limit error: HTTP {response.status_code}")
+                    print(f"APInex diagnostic: {response.text[:1000]}")
                 else:
-                    print("APInex ERROR:")
+                    print(f"APInex ERROR: HTTP {response.status_code}")
                     print(response.text[:2000])
                     return None
 
@@ -348,16 +353,33 @@ def analyze_articles(articles):
 
     results = {}
 
-    for article in articles:
-        result = analyze_one(article, MODEL)
+    # Allow an operator to configure additional APInex model IDs without a
+    # code change. Keep the configured primary and fallback first.
+    extra_models = [
+        item.strip()
+        for item in os.getenv("LEGACY_EXTRA_MODELS", "").split(",")
+        if item.strip()
+    ]
+    model_chain = []
+    for model in [MODEL, FALLBACK_MODEL, *extra_models]:
+        if model and model not in model_chain:
+            model_chain.append(model)
 
-        if result is None and FALLBACK_MODEL and FALLBACK_MODEL != MODEL:
-            print(f"Legacy model fallback: {MODEL} -> {FALLBACK_MODEL}")
-            result = analyze_one(article, FALLBACK_MODEL)
+    print("Legacy AI model chain: " + " -> ".join(model_chain))
+
+    for article in articles:
+        result = None
+        for index, model in enumerate(model_chain):
+            if index:
+                print(f"Legacy AI model fallback: {model_chain[index - 1]} -> {model}")
+            result = analyze_one(article, model)
+            if result:
+                break
 
         if result:
             results[result["id"]] = result
 
+    print(f"Legacy AI completed: {len(results)}/{len(articles)} candidate(s).")
     return results
 
 
