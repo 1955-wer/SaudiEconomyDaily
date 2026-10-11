@@ -1058,13 +1058,11 @@ def research_articles(
         )
         return {}
 
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    key_env = config.get("key_env", "APINEX_API_KEY")
+    api_key = os.getenv(key_env)
 
     if not api_key:
-        print(
-            "Hermes research unavailable: "
-            "GEMINI_API_KEY/GOOGLE_API_KEY is missing."
-        )
+        print(f"Hermes research unavailable: {key_env} is missing.")
         return {}
 
     if not articles:
@@ -1094,7 +1092,7 @@ def research_articles(
 
     env = os.environ.copy()
 
-    env["GEMINI_API_KEY"] = api_key
+    env[key_env] = api_key
     env["HERMES_HOME"] = runtime_home
 
     _write_runtime_config(
