@@ -1824,9 +1824,23 @@ def main():
     )
 
     if not results:
-        print("AI research/analysis failed; activating deterministic emergency fallback.")
-        results = build_emergency_results(candidates, slots)
-        processor_used = "emergency_source_only"
+        # Never silently publish source-only text as if the AI pipeline worked.
+        # An operator may explicitly enable emergency publication if desired.
+        allow_source_only = (
+            os.getenv("ALLOW_SOURCE_ONLY_FALLBACK", "false").strip().lower()
+            in {"1", "true", "yes", "on"}
+        )
+        if allow_source_only:
+            print("WARNING: all AI engines failed; ALLOW_SOURCE_ONLY_FALLBACK is enabled.")
+            results = build_emergency_results(candidates, slots)
+            processor_used = "emergency_source_only"
+        else:
+            print("CRITICAL: all AI engines failed; refusing to publish an unprocessed source-only newsletter.")
+            print("Check APINEX daily check-in/account limits, API key permissions, and model availability.")
+            raise RuntimeError(
+                "AI pipeline unavailable. Newsletter was not published because "
+                "ALLOW_SOURCE_ONLY_FALLBACK is disabled."
+            )
 
     chosen = choose_publishable(
         candidates,
