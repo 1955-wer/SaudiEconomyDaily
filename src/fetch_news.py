@@ -21,40 +21,7 @@ except ImportError:
 
 from ai_editor import analyze_articles
 
-# Hermes is intentionally optional: a broken Hermes install/module must never
-# prevent the independent legacy AI editor from publishing the newsletter.
-HERMES_AVAILABLE = True
-
-try:
-    from hermes_researcher import (
-        research_articles,
-        discover_articles,
-        discoveries_to_articles,
-        load_config as load_hermes_config,
-        supporting_source_names,
-    )
-except Exception as error:
-    HERMES_AVAILABLE = False
-    print(f"WARNING: Hermes layer unavailable; legacy path remains active: {error}")
-
-    def load_hermes_config():
-        return {
-            "enabled": False,
-            "fallback_to_legacy": True,
-            "max_candidates": 3,
-        }
-
-    def research_articles(*args, **kwargs):
-        return {}
-
-    def discover_articles(*args, **kwargs):
-        return []
-
-    def discoveries_to_articles(*args, **kwargs):
-        return []
-
-    def supporting_source_names(*args, **kwargs):
-        return []
+from ai_editor import analyze_articles
 
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -973,139 +940,21 @@ def newsletter_label():
     return "النشرة المسائية"
 
 
-def get_news_processor_mode():
-    mode = os.getenv("NEWS_PROCESSOR")
-    if mode:
-        return mode.strip().lower()
-
-    if not HERMES_AVAILABLE:
-        return "legacy"
-
-    config = load_hermes_config()
-    if config.get("enabled", True):
-        return "hermes"
-
-    return "legacy"
-
-
-def choose_research_candidates(candidates):
-    config = load_hermes_config()
-    limit = max(1, min(len(candidates), int(config.get("max_candidates", 3))))
-
-    return sorted(
-        candidates,
-        key=candidate_score,
-        reverse=True,
-    )[:limit]
-
-
-def suppress_hermes_duplicates(results):
-    if not results:
-        return results
-
-    cleaned = dict(results)
-
-    for article_id, result in results.items():
-        duplicate_of = result.get("duplicate_of")
-        if duplicate_of and duplicate_of in results:
-            cleaned.pop(article_id, None)
-
-    return cleaned
-
-
 def run_news_processor(candidates, sources):
     """
-    Two-engine pipeline:
-    1) Hermes is the primary research/verification/linking layer.
-    2) The legacy AI editor is an independent fallback and completion layer.
-
-    Hermes failure must never prevent the newsletter from being produced.
-    Partial Hermes results are preserved; the legacy engine handles the
-    candidates Hermes could not process.
+    Lightweight pipeline: one AI editor, followed by the explicit
+    no-AI emergency publisher only if configured and AI returns no results.
     """
-    mode = get_news_processor_mode()
-    normalized_mode = mode if mode in {"legacy", "hermes"} else "hermes"
-
-    print(f"News processor mode: {normalized_mode}")
-
-    if normalized_mode == "legacy":
-        try:
-            return analyze_articles(candidates), "legacy"
-        except Exception as error:
-            print(f"Legacy AI processor failed: {error}")
-            return {}, "legacy_failed"
-
-    fallback_enabled = bool(
-        load_hermes_config().get(
-            "fallback_to_legacy",
-            True,
-        )
-    )
-
-    research_candidates = choose_research_candidates(candidates)
-
-    # ---------------------------
-    # Path 1: Hermes research
-    # ---------------------------
     try:
-        hermes_results = research_articles(
-            research_candidates,
-            sources,
-        )
-        hermes_results = suppress_hermes_duplicates(
-            hermes_results
-        )
+        results = analyze_articles(candidates)
+        if results:
+            print(f"AI editor produced {len(results)} result(s).")
+            return results, "ai_editor"
+        print("AI editor returned no usable results.")
+        return {}, "ai_failed"
     except Exception as error:
-        print(f"Hermes processor failed: {error}")
-        hermes_results = {}
-
-    if hermes_results:
-        print(
-            "Hermes produced "
-            f"{len(hermes_results)} validated result(s)."
-        )
-
-    # ---------------------------
-    # Path 2: legacy AI fallback/completion
-    # ---------------------------
-    if not fallback_enabled:
-        return hermes_results, "hermes"
-
-    hermes_ids = set(hermes_results.keys())
-
-    # If Hermes returned only some stories, let the independent
-    # legacy engine process the remaining stories instead of dropping them.
-    remaining = [
-        article
-        for article in candidates
-        if str(article.get("id", "")) not in hermes_ids
-    ]
-
-    legacy_results = {}
-
-    if remaining:
-        try:
-            print(
-                "Legacy AI fallback/completion candidates: "
-                f"{len(remaining)}"
-            )
-            legacy_results = analyze_articles(remaining)
-        except Exception as error:
-            print(f"Legacy AI processor failed: {error}")
-            legacy_results = {}
-
-    merged = dict(legacy_results)
-    # Hermes is authoritative for stories it successfully researched.
-    merged.update(hermes_results)
-
-    if hermes_results and legacy_results:
-        return merged, "hermes+legacy"
-    if hermes_results:
-        return hermes_results, "hermes"
-    if legacy_results:
-        return legacy_results, "legacy_fallback"
-
-    return {}, "both_failed"
+        print(f"AI editor failed: {error}")
+        return {}, "ai_failed"
 
 
 def build_emergency_results(candidates, slots):
