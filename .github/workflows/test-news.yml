@@ -47,13 +47,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser requests beautifulsoup4 pypdf
 
-      - name: Install Hermes Agent
+      - name: Install Hermes Agent (best effort)
         run: |
-          curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive --skip-browser --skip-computer-use || true
+          # Hermes is an optional AI engine. Installation/network failures must
+          # not stop the independent APInex legacy editor from running.
+          curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive --skip-browser --skip-computer-use || echo "WARNING: Hermes installer failed; legacy AI will still run."
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.local/bin:$PATH"
-          command -v hermes
-          hermes --version
+          if command -v hermes >/dev/null 2>&1; then
+            hermes --version || echo "WARNING: Hermes version check failed; runtime will report availability."
+          else
+            echo "WARNING: Hermes executable is unavailable; legacy AI fallback remains enabled."
+          fi
 
       - name: Fetch, analyze and publish
         env:
