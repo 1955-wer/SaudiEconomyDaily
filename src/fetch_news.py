@@ -1561,33 +1561,7 @@ def main():
     )
     print("=" * 60)
 
-    # Hermes is the primary discovery engine. The legacy source collector
-    # remains intact as an independent fallback and also contributes coverage.
-    hermes_mode = get_news_processor_mode() == "hermes"
-
-    if hermes_mode:
-        try:
-            discoveries = discover_articles(sources)
-            discovered_articles = discoveries_to_articles(discoveries)
-
-            for article in discovered_articles:
-                aid = article["id"]
-                normalized = title_key(article["title"])
-
-                if aid in published or aid in daily["ids"] or aid in seen_ids:
-                    continue
-                if normalized and normalized in seen_titles:
-                    continue
-
-                seen_ids.add(aid)
-                if normalized:
-                    seen_titles.add(normalized)
-                all_articles.append(article)
-
-            print(f"Hermes discovery added: {len(discovered_articles)}")
-            print(f"TOTAL DISCOVERY CANDIDATES: {len(all_articles)}")
-        except Exception as error:
-            print(f"Hermes discovery failed; using legacy discovery: {error}")
+    # Discovery is intentionally limited to configured RSS/Google News/website sources.
 
     if not all_articles:
         save_state(state)
