@@ -47,37 +47,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install feedparser requests beautifulsoup4 pypdf
 
-      - name: Install Hermes Agent (best effort)
-        run: |
-          # Hermes is an optional AI engine. Installation/network failures must
-          # not stop the independent APInex legacy editor from running.
-          curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive --skip-browser --skip-computer-use || echo "WARNING: Hermes installer failed; legacy AI will still run."
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          export PATH="$HOME/.local/bin:$PATH"
-          if command -v hermes >/dev/null 2>&1; then
-            hermes --version || echo "WARNING: Hermes version check failed; runtime will report availability."
-          else
-            echo "WARNING: Hermes executable is unavailable; legacy AI fallback remains enabled."
-          fi
-
       - name: Fetch, analyze and publish
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           APINEX_API_KEY: ${{ secrets.APINEX_API_KEY }}
-          HERMES_PROVIDER: ${{ secrets.HERMES_PROVIDER }}
-          HERMES_MODEL: ${{ secrets.HERMES_MODEL }}
-          HERMES_BASE_URL: ${{ secrets.HERMES_BASE_URL }}
-          HERMES_KEY_ENV: ${{ secrets.HERMES_KEY_ENV }}
           LEGACY_MODEL: ${{ secrets.LEGACY_MODEL }}
           LEGACY_FALLBACK_MODEL: ${{ secrets.LEGACY_FALLBACK_MODEL }}
           LEGACY_EXTRA_MODELS: ${{ secrets.LEGACY_EXTRA_MODELS }}
           ALLOW_SOURCE_ONLY_FALLBACK: ${{ vars.ALLOW_SOURCE_ONLY_FALLBACK }}
-          HERMES_WEB_BACKEND: ${{ secrets.HERMES_WEB_BACKEND }}
-          HERMES_DISCOVERY_LIMIT: ${{ secrets.HERMES_DISCOVERY_LIMIT }}
-          HERMES_DISCOVERY_TURNS: ${{ secrets.HERMES_DISCOVERY_TURNS }}
-          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
-          PARALLEL_API_KEY: ${{ secrets.PARALLEL_API_KEY }}
         run: |
           python src/fetch_news.py
 
