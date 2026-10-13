@@ -55,7 +55,8 @@ jobs:
           LEGACY_MODEL: ${{ secrets.LEGACY_MODEL }}
           LEGACY_FALLBACK_MODEL: ${{ secrets.LEGACY_FALLBACK_MODEL }}
           LEGACY_EXTRA_MODELS: ${{ secrets.LEGACY_EXTRA_MODELS }}
-          ALLOW_SOURCE_ONLY_FALLBACK: ${{ vars.ALLOW_SOURCE_ONLY_FALLBACK }}
+          # Emergency mode: publish the original headline/source/link if all AI calls fail.
+          ALLOW_SOURCE_ONLY_FALLBACK: true
         run: |
           python src/fetch_news.py
 
