@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import traceback
 import re
 import time
 import html
@@ -13,6 +14,8 @@ from io import BytesIO
 import requests
 import feedparser
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 try:
     from pypdf import PdfReader
@@ -94,6 +97,28 @@ REJECT_TITLE_PATTERNS = [
     "أسعار الذهب",
     "سعر النفط اليوم",
 ]
+
+
+def create_session():
+    """HTTP session that retries transient GET failures (429/5xx, timeouts)."""
+    session = requests.Session()
+
+    retry = Retry(
+        total=2,
+        backoff_factor=1,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=frozenset(["GET"]),
+        raise_on_status=False,
+    )
+
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    session.headers.update({"User-Agent": "Mozilla/5.0 SaudiEconomyDaily/5.0"})
+    return session
+
+
+HTTP = create_session()
 
 
 def find_sources_file():
@@ -364,13 +389,13 @@ def get_feed(url):
     try:
         print(f"    RSS: {url}")
 
-        feed = feedparser.parse(
-            url,
-            request_headers={
-                "User-Agent":
-                    "Mozilla/5.0 SaudiEconomyDaily/5.0"
-            },
-        )
+        response = HTTP.get(url, timeout=REQUEST_TIMEOUT)
+
+        if not response.ok:
+            print(f"    RSS HTTP {response.status_code}: {url}")
+            return []
+
+        feed = feedparser.parse(response.content)
 
         if not feed.entries:
             return []
@@ -396,7 +421,7 @@ def fetch_website_links(page_url, source):
                 "Chrome/131 Safari/537.36"
         }
 
-        response = requests.get(
+        response = HTTP.get(
             page_url,
             headers=headers,
             timeout=REQUEST_TIMEOUT,
@@ -488,7 +513,7 @@ def extract_pdf_text(url):
         return ""
 
     try:
-        response = requests.get(
+        response = HTTP.get(
             url,
             headers={
                 "User-Agent": "Mozilla/5.0 SaudiEconomyDaily/5.0"
@@ -532,7 +557,7 @@ def extract_article_text(url):
         return extract_pdf_text(url)
 
     try:
-        response = requests.get(
+        response = HTTP.get(
             url,
             headers={
                 "User-Agent":
@@ -1085,6 +1110,24 @@ def send_telegram(message):
             f"Telegram ERROR: {error}"
         )
         return False
+
+
+def supporting_source_names(result, primary_source):
+    """Return up to 4 unique supporting source names, excluding the primary source."""
+    names = result.get("supporting_sources") or []
+
+    if not isinstance(names, list):
+        return []
+
+    cleaned = []
+
+    for name in names:
+        name = str(name).strip()
+
+        if name and name != primary_source and name not in cleaned:
+            cleaned.append(name)
+
+    return cleaned[:4]
 
 
 def format_item(article, result, number):
@@ -1690,10 +1733,24 @@ def main():
         save_state(state)
         return
 
-    message = build_newsletter(
-        newsletter_label(),
-        chosen,
-    )
+    try:
+        message = build_newsletter(
+            newsletter_label(),
+            chosen,
+        )
+    except Exception as error:
+        print(f"ERROR: could not build newsletter: {error}")
+        traceback.print_exc()
+
+        # Cool the candidates down for ANALYSIS_RETRY_HOURS instead of
+        # re-running the AI on the same items every run.
+        now = datetime.now(timezone.utc).isoformat()
+
+        for article in candidates:
+            processed[article["id"]] = now
+
+        save_state(state)
+        return
 
     if send_telegram(message):
         now = datetime.now(

@@ -10,7 +10,7 @@ API_URL = API_BASE_URL + "/chat/completions"
 MODEL = os.getenv("AI_MODEL", os.getenv("LEGACY_MODEL", "free/glm-5.3-flash")).strip() or "free/glm-5.3-flash"
 FALLBACK_MODEL = os.getenv("AI_FALLBACK_MODEL", os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro")).strip() or "free/mimo-v2.6-pro"
 
-MAX_RETRIES = 2
+MAX_RETRIES = 3
 
 SYSTEM_PROMPT = """
 أنت محرر اقتصادي لقناة Saudi Economy Daily.
@@ -285,6 +285,7 @@ def analyze_articles(articles):
             "max_tokens": 2200,
         }
 
+        rate_limit_wait = 0
         for attempt in range(1, MAX_RETRIES + 1):
             try:
                 print(f"APInex attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
@@ -313,6 +314,7 @@ def analyze_articles(articles):
                                     normalized = normalize_result(item)
                                     if not normalized:
                                         continue
+                                    normalized["id"] = str(article.get("id", ""))
                                     combined = " ".join([
                                         normalized.get("headline", ""),
                                         normalized.get("summary", ""),
@@ -334,6 +336,12 @@ def analyze_articles(articles):
                 elif response.status_code in (429, 500, 502, 503, 504):
                     print(f"APInex transient/limit error: HTTP {response.status_code}")
                     print(f"APInex diagnostic: {response.text[:1000]}")
+                    if response.status_code == 429:
+                        try:
+                            retry_after = int(response.headers.get("Retry-After", "0"))
+                        except ValueError:
+                            retry_after = 0
+                        rate_limit_wait = max(retry_after, 20 * attempt)
                 else:
                     print(f"APInex ERROR: HTTP {response.status_code}")
                     print(response.text[:2000])
@@ -347,7 +355,10 @@ def analyze_articles(articles):
                 print(f"Unexpected APInex error: {error}")
 
             if attempt < MAX_RETRIES:
-                time.sleep(attempt * 3)
+                wait_seconds = rate_limit_wait if rate_limit_wait else attempt * 5
+                rate_limit_wait = 0
+                print(f"Waiting {wait_seconds}s before retry...")
+                time.sleep(min(wait_seconds, 90))
 
         return None
 
