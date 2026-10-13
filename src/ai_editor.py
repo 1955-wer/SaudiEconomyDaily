@@ -7,8 +7,8 @@ import requests
 APINEX_API_KEY = (os.getenv("APINEX_API_KEY") or "").strip()
 API_BASE_URL = (os.getenv("APINEX_BASE_URL") or "https://api.apinex.bond/v1").strip().rstrip("/")
 API_URL = API_BASE_URL + "/chat/completions"
-MODEL = os.getenv("LEGACY_MODEL", "free/glm-5.3-flash").strip() or "free/glm-5.3-flash"
-FALLBACK_MODEL = os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro").strip() or "free/mimo-v2.6-pro"
+MODEL = os.getenv("AI_MODEL", os.getenv("LEGACY_MODEL", "free/glm-5.3-flash")).strip() or "free/glm-5.3-flash"
+FALLBACK_MODEL = os.getenv("AI_FALLBACK_MODEL", os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro")).strip() or "free/mimo-v2.6-pro"
 
 MAX_RETRIES = 2
 
@@ -239,7 +239,7 @@ def analyze_articles(articles):
 - أسماء الشركات والمؤشرات والجهات العالمية يمكن إبقاؤها بالإنجليزية عند الحاجة داخل نص عربي.
 - لا تستخدم أي معلومة غير موجودة في المادة.
 - لا تختلق أرقاماً أو تواريخ أو اقتباسات.
-- إذا كانت المادة قصيرة، اذكر فقط ما تؤكده.
+- إذا كانت المادة قصيرة، اذكر فقط ما تؤكده.\n- اجعل العنوان محدداً ويذكر الحدث والجهة أو الرقم الأهم متى توفر ذلك، وتجنب العناوين العامة.\n- ميّز بوضوح بين حقيقة وردت في المصدر وتوقع أو رأي منسوب إلى جهة.\n- لا تصف الأثر بأنه إيجابي أو سلبي إلا إذا كان ذلك مدعوماً بالمادة؛ استخدم unknown عند عدم كفاية الدليل.\n- لا تكرر الفكرة نفسها في الملخص وحقائق الخبر، ولا تضف استنتاجاً سببياً غير مثبت.
 - الملخص 3 إلى 4 جمل قصيرة وغنية بالمعلومات، مع الأرقام والنسب والتواريخ والأطراف والسياق المباشر المتاح.
 - "why_it_matters" من 2 إلى 3 جمل قصيرة.
 - "key_facts" من 3 إلى 4 نقاط عند توفرها.
@@ -318,7 +318,7 @@ def analyze_articles(articles):
                                         normalized.get("summary", ""),
                                         normalized.get("why_it_matters", ""),
                                     ])
-                                    if arabic_ratio(combined) < 0.20:
+                                    if arabic_ratio(combined) < 0.45:
                                         print("ERROR: APInex output was not sufficiently Arabic; rejecting result.")
                                         continue
                                     return normalized
@@ -357,7 +357,7 @@ def analyze_articles(articles):
     # code change. Keep the configured primary and fallback first.
     extra_models = [
         item.strip()
-        for item in os.getenv("LEGACY_EXTRA_MODELS", "").split(",")
+        for item in os.getenv("AI_EXTRA_MODELS", os.getenv("LEGACY_EXTRA_MODELS", "")).split(",")
         if item.strip()
     ]
     model_chain = []
@@ -365,7 +365,7 @@ def analyze_articles(articles):
         if model and model not in model_chain:
             model_chain.append(model)
 
-    print("Legacy AI model chain: " + " -> ".join(model_chain))
+    print("AI model chain: " + " -> ".join(model_chain))
 
     for article in articles:
         result = None
@@ -379,7 +379,7 @@ def analyze_articles(articles):
         if result:
             results[result["id"]] = result
 
-    print(f"Legacy AI completed: {len(results)}/{len(articles)} candidate(s).")
+    print(f"AI analysis completed: {len(results)}/{len(articles)} candidate(s).")
     return results
 
 
