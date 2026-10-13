@@ -39,7 +39,7 @@ STATE_FILE = os.path.join(
 )
 
 MAX_ARTICLES_PER_SOURCE = 10
-MAX_CANDIDATES_PER_RUN = 8
+MAX_CANDIDATES_PER_RUN = 3
 MAX_ITEMS_PER_NEWSLETTER = 3
 
 # 3 newsletters × 3 items = 9 items on a normal day.
