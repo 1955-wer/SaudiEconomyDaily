@@ -21,8 +21,6 @@ except ImportError:
 
 from ai_editor import analyze_articles
 
-from ai_editor import analyze_articles
-
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
