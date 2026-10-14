@@ -4,11 +4,11 @@ import time
 import requests
 
 
-APINEX_API_KEY = (os.getenv("APINEX_API_KEY") or "").strip()
-API_BASE_URL = (os.getenv("APINEX_BASE_URL") or "https://api.apinex.bond/v1").strip().rstrip("/")
+TOKEN_HARBOR_API_KEY = (os.getenv("TOKEN_HARBOR_API_KEY") or "").strip()
+API_BASE_URL = (os.getenv("TOKEN_HARBOR_BASE_URL") or "https://tokenharbor.ai/v1").strip().rstrip("/")
 API_URL = API_BASE_URL + "/chat/completions"
-MODEL = os.getenv("AI_MODEL", os.getenv("LEGACY_MODEL", "free/glm-5.3-flash")).strip() or "free/glm-5.3-flash"
-FALLBACK_MODEL = os.getenv("AI_FALLBACK_MODEL", os.getenv("LEGACY_FALLBACK_MODEL", "free/mimo-v2.6-pro")).strip() or "free/mimo-v2.6-pro"
+MODEL = os.getenv("AI_MODEL", "claude-haiku-5.5:free").strip() or "claude-haiku-5.5:free"
+FALLBACK_MODEL = os.getenv("AI_FALLBACK_MODEL", "deepseek-v4.1-flash:free").strip() or "deepseek-v4.1-flash:free"
 
 MAX_RETRIES = 3
 
@@ -209,8 +209,8 @@ def arabic_ratio(text):
 
 
 def analyze_articles(articles):
-    if not APINEX_API_KEY:
-        print("ERROR: APINEX_API_KEY is missing")
+    if not TOKEN_HARBOR_API_KEY:
+        print("ERROR: TOKEN_HARBOR_API_KEY is missing")
         return {}
 
     if not articles:
@@ -269,7 +269,7 @@ def analyze_articles(articles):
 """
 
         headers = {
-            "Authorization": f"Bearer {APINEX_API_KEY}",
+            "Authorization": f"Bearer {TOKEN_HARBOR_API_KEY}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://github.com/1955-wer/SaudiEconomyDaily",
             "X-Title": "Saudi Economy Daily",
@@ -288,7 +288,7 @@ def analyze_articles(articles):
         rate_limit_wait = 0
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                print(f"APInex attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
+                print(f"TokenHarbor attempt {attempt}/{MAX_RETRIES} model={model} article={prepared['id']}")
                 response = requests.post(
                     API_URL,
                     headers=headers,
