@@ -714,8 +714,8 @@
   },
   "daily": {
     "date": "2026-10-14",
-    "count": 10,
-    "newsletter_count": 4,
+    "count": 0,
+    "newsletter_count": 0,
     "ids": [
       "394a2f750513428b963b1d6a2a92ee3a0865c0918df3f8b659b529edab7c1e05",
       "19cc5404063b05c6d6eaece2f2a83f1bc648b59c649b793358c80947423c542c",
