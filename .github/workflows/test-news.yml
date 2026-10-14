@@ -48,10 +48,9 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          APINEX_API_KEY: ${{ secrets.APINEX_API_KEY }}
-          LEGACY_MODEL: ${{ secrets.LEGACY_MODEL }}
-          LEGACY_FALLBACK_MODEL: ${{ secrets.LEGACY_FALLBACK_MODEL }}
-          LEGACY_EXTRA_MODELS: ${{ secrets.LEGACY_EXTRA_MODELS }}
+          TOKEN_HARBOR_API_KEY: ${{ secrets.TOKEN_HARBOR_API_KEY }}
+          AI_MODEL: claude-haiku-5.5:free
+          AI_FALLBACK_MODEL: deepseek-v4.1-flash:free
           # Emergency mode: publish the original headline/source/link if all AI calls fail.
           ALLOW_SOURCE_ONLY_FALLBACK: true
         run: |
