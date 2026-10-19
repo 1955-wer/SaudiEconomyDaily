@@ -40,15 +40,15 @@ STATE_FILE = os.path.join(
 )
 
 MAX_ARTICLES_PER_SOURCE = 10
-MAX_CANDIDATES_PER_RUN = 3
+MAX_CANDIDATES_PER_RUN = 5
 MAX_ITEMS_PER_NEWSLETTER = 3
 
-# 3 newsletters × 3 items = 9 items on a normal day.
-DAILY_TARGET = 9
-DAILY_MIN = 8
-DAILY_MAX = 10
+# 4 newsletters × 3 items = 12 items on a normal day.
+DAILY_TARGET = 12
+DAILY_MIN = 10
+DAILY_MAX = 12
 
-PUBLISH_THRESHOLD = 68
+PUBLISH_THRESHOLD = 60
 MIN_CONFIDENCE = 50
 
 # Each run looks mainly at the last 30 hours.
@@ -1803,7 +1803,7 @@ def main():
 
     print(
         f"Newsletters today: "
-        f"{daily['newsletter_count']} / 3"
+        f"{daily['newsletter_count']} / 4"
     )
 
     print("=" * 60)
