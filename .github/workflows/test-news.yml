@@ -3,18 +3,13 @@ name: Saudi Economy Daily
 on:
   workflow_dispatch:
 
+  # GitHub cron runs in UTC. Riyadh is UTC+3, so:
+  # 08:00 Riyadh = 05:00 UTC, 12:00 = 09:00, 16:00 = 13:00, 20:00 = 17:00
   schedule:
-    # 08:00 Riyadh
-    - cron: "0 8 * * *"
-      timezone: "Asia/Riyadh"
-
-    # 14:00 Riyadh
-    - cron: "0 14 * * *"
-      timezone: "Asia/Riyadh"
-
-    # 20:00 Riyadh
-    - cron: "0 20 * * *"
-      timezone: "Asia/Riyadh"
+    - cron: "0 5 * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 13 * * *"
+    - cron: "0 17 * * *"
 
 permissions:
   contents: write
@@ -48,9 +43,11 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TOKEN_HARBOR_API_KEY: ${{ secrets.TOKEN_HARBOR_API_KEY }}
-          AI_MODEL: claude-haiku-5.5:free
-          AI_FALLBACK_MODEL: deepseek-v4.1-flash:free
+          APINEX_API_KEY: ${{ secrets.APINEX_API_KEY }}
+          APINEX_BASE_URL: https://tokenharbor.ai/v1
+          LEGACY_MODEL: ${{ secrets.LEGACY_MODEL }}
+          LEGACY_FALLBACK_MODEL: ${{ secrets.LEGACY_FALLBACK_MODEL }}
+          LEGACY_EXTRA_MODELS: ${{ secrets.LEGACY_EXTRA_MODELS }}
           # Emergency mode: publish the original headline/source/link if all AI calls fail.
           ALLOW_SOURCE_ONLY_FALLBACK: true
         run: |
@@ -65,30 +62,25 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No state changes to commit."
-          else
-            git commit -m "chore: update news state"
-
-            # A code/configuration commit may land while this scheduled job is
-            # running. Rebase the state commit onto the latest main before push.
-            # Retry once to handle a second concurrent update without losing state.
-            for attempt in 1 2; do
-              git fetch origin main
-              if git rebase origin/main; then
-                if git push origin HEAD:main; then
-                  echo "Processed state saved successfully."
-                  exit 0
-                fi
-              else
-                echo "State rebase failed on attempt $attempt; aborting rebase."
-                git rebase --abort || true
-              fi
-
-              if [ "$attempt" -eq 1 ]; then
-                echo "State push conflicted; retrying after refreshing main."
-                sleep 2
-              fi
-            done
-
-            echo "::error::Could not save processed state after two attempts."
-            exit 1
+            exit 0
           fi
+
+          git commit -m "chore: update news state"
+
+          # Another push (for example a manual code upload) may land while
+          # this job runs. Rebase our state commit onto the latest main and
+          # retry. On a conflict, keep this run's state file (-X theirs
+          # refers to our commit during a rebase).
+          for attempt in 1 2 3 4; do
+            if git pull --rebase -X theirs origin main && git push origin HEAD:main; then
+              echo "Processed state saved successfully."
+              exit 0
+            fi
+
+            echo "Push rejected on attempt $attempt; retrying..."
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 5))
+          done
+
+          echo "::error::Could not save processed state after 4 attempts."
+          exit 1
