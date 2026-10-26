@@ -4,32 +4,9 @@ import time
 import requests
 
 
-# The API key can come from TOKEN_HARBOR_API_KEY or the older APINEX_API_KEY
-# secret, so the existing GitHub secret keeps working.
-def load_api_keys():
-    """Keys may be separated by commas or new lines. The first one that works is used."""
-    raw = (
-        os.getenv("TOKEN_HARBOR_API_KEYS")
-        or os.getenv("TOKEN_HARBOR_API_KEY")
-        or os.getenv("APINEX_API_KEY")
-        or ""
-    )
-    keys = []
-    for part in raw.replace("\n", ",").split(","):
-        key = part.strip()
-        if key and key not in keys:
-            keys.append(key)
-    return keys
-
-
-API_KEYS = load_api_keys()
-
-API_BASE_URL = (
-    os.getenv("TOKEN_HARBOR_BASE_URL")
-    or os.getenv("APINEX_BASE_URL")
-    or "https://tokenharbor.ai/v1"
-).strip().rstrip("/")
-
+# Token Harbor is the only supported AI provider and credential source.
+API_KEY = os.getenv("TOKEN_HARBOR_API_KEY", "").strip()
+API_BASE_URL = "https://tokenharbor.ai/v1"
 API_URL = API_BASE_URL + "/chat/completions"
 
 # Free models on Token Harbor, fixed in code so a leftover AI_MODEL variable
@@ -270,13 +247,13 @@ def arabic_ratio(text):
 
 def analyze_articles(articles):
     if not API_KEYS:
-        print("ERROR: no API key found (TOKEN_HARBOR_API_KEYS, TOKEN_HARBOR_API_KEY or APINEX_API_KEY)")
+        print("ERROR: missing TOKEN_HARBOR_API_KEY GitHub Actions secret.")
         return {}
 
     if not articles:
         return {}
 
-    print(f"API keys configured: {len(API_KEYS)}")
+    print("Token Harbor API key configured: yes")
 
     def analyze_one(article, model, key_number, api_key):
         """Returns (result, next_step). next_step is 'model', 'key', or None."""
@@ -312,7 +289,6 @@ def analyze_articles(articles):
             "max_tokens": 2200,
         }
 
-        rate_limit_wait = 0
         json_retry_used = False
 
         for attempt in range(1, MAX_RETRIES + 1):
@@ -379,13 +355,11 @@ def analyze_articles(articles):
                     return None, "model"
 
                 elif response.status_code == 429:
-                    print("TokenHarbor rate limit: HTTP 429")
+                    print("TokenHarbor rate limit/auth lockout: HTTP 429")
                     print(f"TokenHarbor diagnostic: {response.text[:500]}")
-                    try:
-                        retry_after = int(response.headers.get("Retry-After", "0"))
-                    except ValueError:
-                        retry_after = 0
-                    rate_limit_wait = max(retry_after, 20 * attempt)
+                    # Do not hammer a locked/rate-limited key or wait beyond the
+                    # workflow timeout. Try the next configured model immediately.
+                    return None, "model"
 
                 elif response.status_code in (500, 502, 503, 504):
                     print(f"TokenHarbor server error: HTTP {response.status_code}")
@@ -404,25 +378,16 @@ def analyze_articles(articles):
                 print(f"Unexpected TokenHarbor error: {error}")
 
             if attempt < MAX_RETRIES:
-                wait_seconds = rate_limit_wait if rate_limit_wait else attempt * 5
-                rate_limit_wait = 0
+                wait_seconds = attempt * 3
                 print(f"Waiting {wait_seconds}s before retry...")
-                time.sleep(min(wait_seconds, 90))
+                time.sleep(wait_seconds)
 
-        # Retries exhausted: a rate limit may clear with another key; otherwise
-        # the problem is more likely this model/request, so move on.
-        return None, ("key" if rate_limit_wait else "model")
+        return None, "model"
 
     results = {}
 
-    extra_models = [
-        item.strip()
-        for item in os.getenv("AI_EXTRA_MODELS", os.getenv("LEGACY_EXTRA_MODELS", "")).split(",")
-        if item.strip()
-    ]
-
     model_chain = []
-    for model in [MODEL, FALLBACK_MODEL, *extra_models]:
+    for model in [MODEL, FALLBACK_MODEL]:
         if model and model not in model_chain:
             model_chain.append(model)
 
@@ -435,14 +400,7 @@ def analyze_articles(articles):
             if model_index:
                 print(f"Model fallback -> {model}")
 
-            for key_index, api_key in enumerate(API_KEYS, start=1):
-                if key_index > 1:
-                    print(f"Key fallback -> key #{key_index}")
-
-                result, next_step = analyze_one(article, model, key_index, api_key)
-
-                if result or next_step == "model":
-                    break
+            result, next_step = analyze_one(article, model, 1, API_KEY)
 
             if result:
                 break
