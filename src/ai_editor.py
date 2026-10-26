@@ -246,7 +246,7 @@ def arabic_ratio(text):
 
 
 def analyze_articles(articles):
-    if not API_KEYS:
+    if not API_KEY:
         print("ERROR: missing TOKEN_HARBOR_API_KEY GitHub Actions secret.")
         return {}
 
@@ -256,7 +256,7 @@ def analyze_articles(articles):
     print("Token Harbor API key configured: yes")
 
     def analyze_one(article, model, key_number, api_key):
-        """Returns (result, next_step). next_step is 'model', 'key', or None."""
+        """Returns (result, next_step); next_step is 'model' or None."""
         prepared = {
             "id": str(article.get("id", "")),
             "title": str(article.get("title", ""))[:500],
@@ -342,8 +342,7 @@ def analyze_articles(articles):
                     return None, "model"
 
                 elif response.status_code in (401, 402, 403):
-                    # Bad key, exhausted key, or key not allowed for this model.
-                    # Another key may still work.
+                    # Invalid key, exhausted account quota, or model access denied.
                     print(f"TokenHarbor key error: HTTP {response.status_code}")
                     print(f"TokenHarbor diagnostic: {response.text[:800]}")
                     return None, "key"
